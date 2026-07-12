@@ -1,4 +1,5 @@
 import { Chip } from "@heroui/react";
+import { displayTag } from "@/lib/tags";
 
 type NoteTagsProps = {
   tags: string[];
@@ -9,25 +10,20 @@ type NoteTagsProps = {
 
 export function NoteTags({
   tags,
-  emptyLabel = "No tags",
+  emptyLabel = "",
   size = "sm",
   className = "",
 }: NoteTagsProps) {
   if (!tags.length) {
-    return <p className={`text-sm text-slate-400 ${className}`}>{emptyLabel}</p>;
+    if (!emptyLabel) return null;
+    return <p className={`text-sm text-muted ${className}`}>{emptyLabel}</p>;
   }
 
   return (
     <div className={`flex flex-wrap gap-1.5 ${className}`}>
       {tags.map((tag) => (
-        <Chip
-          key={tag}
-          size={size}
-          variant="soft"
-          color="accent"
-          className="rounded-full"
-        >
-          <Chip.Label>{tag}</Chip.Label>
+        <Chip key={tag} size={size} variant="soft" color="accent" className="rounded-full">
+          <Chip.Label>{displayTag(tag)}</Chip.Label>
         </Chip>
       ))}
     </div>

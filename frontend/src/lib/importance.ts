@@ -2,10 +2,10 @@ export type ImportanceLevel = 1 | 2 | 3;
 
 export type ImportanceMeta = {
   value: ImportanceLevel;
-  label: string;
-  /** Short accessible name for aria-label */
-  description: string;
-  /** Tailwind classes for badge surface */
+  /** Stable key for i18n lookup */
+  labelKey: "high" | "medium" | "low";
+  descriptionKey: "highPriority" | "mediumPriority" | "lowPriority";
+  /** Tailwind classes for badge surface (dark-friendly) */
   badgeClass: string;
   /** Tailwind classes for icon stroke/fill */
   iconClass: string;
@@ -19,28 +19,28 @@ export type ImportanceMeta = {
 export const IMPORTANCE_LEVELS: ImportanceMeta[] = [
   {
     value: 3,
-    label: "High",
-    description: "High priority",
-    badgeClass: "bg-red-50 text-red-800 ring-red-200",
-    iconClass: "text-red-600",
+    labelKey: "high",
+    descriptionKey: "highPriority",
+    badgeClass: "bg-red-950/80 text-red-200 ring-red-800",
+    iconClass: "text-red-400",
     accentClass: "bg-red-500",
     chipColor: "danger",
   },
   {
     value: 2,
-    label: "Medium",
-    description: "Medium priority",
-    badgeClass: "bg-amber-50 text-amber-900 ring-amber-200",
-    iconClass: "text-amber-600",
+    labelKey: "medium",
+    descriptionKey: "mediumPriority",
+    badgeClass: "bg-amber-950/80 text-amber-200 ring-amber-800",
+    iconClass: "text-amber-400",
     accentClass: "bg-amber-400",
     chipColor: "warning",
   },
   {
     value: 1,
-    label: "Low",
-    description: "Low priority",
-    badgeClass: "bg-emerald-50 text-emerald-900 ring-emerald-200",
-    iconClass: "text-emerald-600",
+    labelKey: "low",
+    descriptionKey: "lowPriority",
+    badgeClass: "bg-emerald-950/80 text-emerald-200 ring-emerald-800",
+    iconClass: "text-emerald-400",
     accentClass: "bg-emerald-500",
     chipColor: "success",
   },
@@ -54,5 +54,5 @@ export function clampImportance(value: number): ImportanceLevel {
 
 export function getImportanceMeta(value: number): ImportanceMeta {
   const level = clampImportance(value);
-  return IMPORTANCE_LEVELS.find((item) => item.value === level) ?? IMPORTANCE_LEVELS[1];
+  return IMPORTANCE_LEVELS.find((item) => item.value === level) ?? IMPORTANCE_LEVELS[1]!;
 }

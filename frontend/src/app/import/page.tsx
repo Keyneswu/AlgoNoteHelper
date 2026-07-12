@@ -2,28 +2,61 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Accordion, Button, Card, Input, Label, TextArea, TextField, type Key } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
 import { CodeField } from "@/components/CodeField";
+import { FieldLabel } from "@/components/FieldLabel";
 import { ImportanceBadge } from "@/components/ImportanceBadge";
 import { ImportancePicker } from "@/components/ImportancePicker";
 import { NoteTags } from "@/components/NoteTags";
+import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
+import {
+  clearImportUiState,
+  loadImportUiState,
+  saveImportUiState,
+  type ImportCandidate,
+} from "@/lib/import-store";
 import { clampImportance, getImportanceMeta, type ImportanceLevel } from "@/lib/importance";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
 
-type ImportCandidate = NoteDraft & { key: string };
-
 export default function ImportPage() {
+  const t = useTranslations("import");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const codeLanguage = usePreferredCodeLanguage(!!session);
-  const [markdown, setMarkdown] = useState("");
-  const [candidates, setCandidates] = useState<ImportCandidate[]>([]);
-  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set());
-  const [error, setError] = useState("");
+
+  const initial = loadImportUiState();
+  const [markdown, setMarkdown] = useState(initial.markdown);
+  const [candidates, setCandidates] = useState<ImportCandidate[]>(initial.candidates);
+  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
+    () => new Set(initial.expandedKeys),
+  );
+  const [error, setError] = useState(initial.error);
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const saved = loadImportUiState();
+    setMarkdown(saved.markdown);
+    setCandidates(saved.candidates);
+    setExpandedKeys(new Set(saved.expandedKeys));
+    setError(saved.error);
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    saveImportUiState({
+      markdown,
+      candidates,
+      expandedKeys: [...expandedKeys].map(String),
+      error,
+    });
+  }, [ready, markdown, candidates, expandedKeys, error]);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -39,8 +72,7 @@ export default function ImportPage() {
     });
     const data = (await response.json()) as { candidates?: NoteDraft[]; error?: string };
     setLoading(false);
-    if (!response.ok) return setError(data.error ?? "Could not extract notes");
-    // Fresh extract: all rows start collapsed.
+    if (!response.ok) return setError(data.error ?? t("errors.couldNotExtract"));
     setExpandedKeys(new Set());
     setCandidates(
       (data.candidates ?? []).map((candidate) => ({
@@ -81,42 +113,45 @@ export default function ImportPage() {
     });
     const data = (await response.json()) as PracticeNote[] | { error?: string };
     setLoading(false);
-    if (!response.ok) return setError((data as { error?: string }).error ?? "Could not import notes");
+    if (!response.ok) return setError((data as { error?: string }).error ?? t("errors.couldNotImport"));
+    clearImportUiState();
+    setMarkdown("");
+    setCandidates([]);
+    setExpandedKeys(new Set());
+    setError("");
     router.push("/notes");
   }
 
   if (isPending || !session) return null;
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-canvas">
       <AppNav />
-      <main className="mx-auto max-w-4xl space-y-6 p-5">
+      <main className="mx-auto max-w-6xl space-y-6 p-5">
         <div>
-          <p className="text-sm font-semibold text-teal-700">Bring your archive together</p>
-          <h1 className="text-3xl font-semibold">Import Markdown</h1>
+          <p className="text-sm font-semibold text-accent">{t("eyebrow")}</p>
+          <h1 className="text-3xl font-semibold text-foreground">{t("heading")}</h1>
         </div>
-        <Card className="border border-slate-200 bg-white">
+        <Card className="border border-border bg-surface">
           <Card.Content className="space-y-4">
             <TextField name="markdown" value={markdown} onChange={setMarkdown}>
-              <Label>Markdown source</Label>
-              <TextArea rows={12} placeholder="# Two Sum&#10;..." />
+              <Label>{t("markdownSource")}</Label>
+              <TextArea rows={12} placeholder={t("markdownPlaceholder")} />
             </TextField>
             <Button onPress={extract} isDisabled={!markdown.trim()} isPending={loading}>
-              Extract notes
+              {t("extractNotes")}
             </Button>
           </Card.Content>
         </Card>
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-red-400">{error}</p>}
         {!!candidates.length && (
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold">Review extracted notes</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Collapsed by default — expand a problem to edit its fields.
-                </p>
+                <h2 className="text-xl font-semibold text-foreground">{t("reviewHeading")}</h2>
+                <p className="mt-1 text-sm text-muted">{t("reviewHint")}</p>
               </div>
               <Button onPress={commit} isPending={loading}>
-                Import {candidates.length} notes
+                {t("importCount", { count: candidates.length })}
               </Button>
             </div>
             <Accordion
@@ -127,43 +162,55 @@ export default function ImportPage() {
             >
               {candidates.map((candidate, index) => {
                 const meta = getImportanceMeta(candidate.importance);
+                const title = candidate.title || t("untitled");
                 return (
                   <Accordion.Item
                     key={candidate.key}
                     id={candidate.key}
-                    className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                    className="overflow-hidden rounded-xl border border-border bg-surface"
                   >
-                    <Accordion.Heading>
-                      <div className="flex items-stretch">
-                        <div className={`w-1 shrink-0 ${meta.accentClass}`} aria-hidden />
-                        <Accordion.Trigger className="flex flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-slate-50">
-                          <span className="min-w-0 flex-1 truncate font-semibold text-slate-900">
-                            <span className="mr-2 text-xs font-medium text-slate-400">{index + 1}.</span>
-                            {candidate.title || "Untitled"}
+                    <Accordion.Heading className="w-full">
+                      <div className="flex w-full min-w-0 items-stretch">
+                        <div className={`w-1 shrink-0 self-stretch ${meta.accentClass}`} aria-hidden />
+                        <Accordion.Trigger className="import-candidate-trigger !flex min-h-12 min-w-0 flex-1 !justify-start items-center gap-3 overflow-hidden px-3 py-3 text-left hover:bg-raised/50 sm:gap-4 sm:px-4">
+                          <span className="w-5 shrink-0 text-right text-xs font-medium tabular-nums text-muted sm:w-6">
+                            {index + 1}
                           </span>
-                          <ImportanceBadge value={candidate.importance} showLabel className="shrink-0" />
-                          <Accordion.Indicator className="shrink-0 text-slate-400" />
-                        </Accordion.Trigger>
-                        <div className="flex items-center border-l border-slate-100 px-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="tertiary"
-                            onPress={() => removeCandidate(candidate.key)}
+                          <span
+                            className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground sm:text-base"
+                            title={title}
                           >
-                            Remove
-                          </Button>
+                            {title}
+                          </span>
+                          <span className="hidden w-[4.75rem] shrink-0 justify-end sm:flex">
+                            <ImportanceBadge
+                              value={candidate.importance}
+                              showLabel
+                              size="sm"
+                              className="whitespace-nowrap"
+                            />
+                          </span>
+                          <Accordion.Indicator className="size-4 shrink-0 text-muted" />
+                        </Accordion.Trigger>
+                        <div className="flex shrink-0 items-center pr-2 pl-1 sm:pr-3">
+                          <button
+                            type="button"
+                            onClick={() => removeCandidate(candidate.key)}
+                            className="rounded-md border border-red-500/70 bg-transparent px-2.5 py-1.5 text-xs font-semibold text-red-400 transition hover:border-red-400 hover:bg-red-500/10 hover:text-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+                          >
+                            {tCommon("actions.remove")}
+                          </button>
                         </div>
                       </div>
                     </Accordion.Heading>
                     <Accordion.Panel>
-                      <Accordion.Body className="space-y-3 border-t border-slate-100 px-4 py-4">
+                      <Accordion.Body className="space-y-3 border-t border-border px-4 py-4">
                         <TextField
                           name={`title-${candidate.key}`}
                           value={candidate.title}
                           onChange={(value) => update(candidate.key, "title", value)}
                         >
-                          <Label>Title</Label>
+                          <FieldLabel kind="title">{tCommon("fields.title")}</FieldLabel>
                           <Input />
                         </TextField>
                         <TextField
@@ -171,7 +218,7 @@ export default function ImportPage() {
                           value={candidate.statement}
                           onChange={(value) => update(candidate.key, "statement", value)}
                         >
-                          <Label>Statement</Label>
+                          <FieldLabel kind="statement">{tCommon("fields.problemStatement")}</FieldLabel>
                           <TextArea rows={3} />
                         </TextField>
                         <TextField
@@ -179,11 +226,11 @@ export default function ImportPage() {
                           value={candidate.approach}
                           onChange={(value) => update(candidate.key, "approach", value)}
                         >
-                          <Label>Approach</Label>
+                          <FieldLabel kind="approach">{tCommon("fields.approach")}</FieldLabel>
                           <TextArea rows={3} />
                         </TextField>
                         <div className="space-y-2">
-                          <Label>Code</Label>
+                          <FieldLabel kind="code">{tCommon("fields.code")}</FieldLabel>
                           <CodeField
                             value={candidate.code}
                             onChange={(value) => update(candidate.key, "code", value)}
@@ -192,20 +239,11 @@ export default function ImportPage() {
                           />
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <TextField
+                          <TagPicker
                             name={`tags-${candidate.key}`}
-                            value={candidate.tags.join(", ")}
-                            onChange={(value) =>
-                              update(
-                                candidate.key,
-                                "tags",
-                                value.split(",").map((tag) => tag.trim()).filter(Boolean),
-                              )
-                            }
-                          >
-                            <Label>Tags</Label>
-                            <Input />
-                          </TextField>
+                            value={candidate.tags}
+                            onChange={(tags) => update(candidate.key, "tags", tags)}
+                          />
                           <TextField
                             name={`pitfalls-${candidate.key}`}
                             value={candidate.pitfalls.join("\n")}
@@ -217,18 +255,22 @@ export default function ImportPage() {
                               )
                             }
                           >
-                            <Label>Pitfalls</Label>
+                            <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
                             <TextArea rows={2} />
                           </TextField>
                         </div>
-                        {!!candidate.tags.length && (
-                          <NoteTags tags={candidate.tags} />
-                        )}
-                        <ImportancePicker
-                          name={`importance-${candidate.key}`}
-                          value={candidate.importance}
-                          onChange={(value: ImportanceLevel) => update(candidate.key, "importance", value)}
-                        />
+                        {!!candidate.tags.length && <NoteTags tags={candidate.tags} />}
+                        <div className="space-y-2">
+                          <FieldLabel kind="importance">{tCommon("fields.importance")}</FieldLabel>
+                          <ImportancePicker
+                            name={`importance-${candidate.key}`}
+                            value={candidate.importance}
+                            onChange={(value: ImportanceLevel) =>
+                              update(candidate.key, "importance", value)
+                            }
+                            showLegend={false}
+                          />
+                        </div>
                       </Accordion.Body>
                     </Accordion.Panel>
                   </Accordion.Item>

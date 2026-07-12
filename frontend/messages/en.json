@@ -1,0 +1,218 @@
+{
+  "nav": {
+    "brand": "AlgoNoteHelper",
+    "notes": "Notes",
+    "import": "Import",
+    "ask": "Ask",
+    "settings": "Settings",
+    "logout": "Logout",
+    "login": "Login",
+    "language": "Language",
+    "localeEn": "English",
+    "localeZh": "中文"
+  },
+  "common": {
+    "brand": "AlgoNoteHelper",
+    "practiceArchive": "Practice archive",
+    "loading": "Loading",
+    "actions": {
+      "add": "Add",
+      "close": "Close",
+      "save": "Save",
+      "remove": "Remove",
+      "backToNotes": "Back to notes"
+    },
+    "fields": {
+      "title": "Title",
+      "problemStatement": "Problem statement",
+      "approach": "Approach",
+      "code": "Code",
+      "tags": "Tags",
+      "pitfalls": "Pitfalls",
+      "importance": "Importance"
+    },
+    "placeholders": {
+      "titleExample": "Two Sum",
+      "pitfallsOnePerLine": "One per line",
+      "tagsCommaSeparated": "array, dp"
+    },
+    "importance": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "highPriority": "High priority",
+      "mediumPriority": "Medium priority",
+      "lowPriority": "Low priority",
+      "minOrHigher": "{level} or higher",
+      "minFilterSuffix": "{level}+",
+      "any": "Any"
+    },
+    "tags": {
+      "noTags": "No tags",
+      "chooseTopics": "Choose topics…",
+      "presets": "Presets",
+      "yourTags": "Your tags",
+      "newTag": "New tag",
+      "newTagPlaceholder": "e.g. monotonic stack",
+      "newTagAriaLabel": "New tag name",
+      "removeTagAriaLabel": "Remove {tag}",
+      "clickToRemove": "Click to remove"
+    },
+    "errors": {
+      "generic": "Something went wrong"
+    }
+  },
+  "home": {
+    "preparingWorkspace": "Preparing your workspace…"
+  },
+  "login": {
+    "signingIn": "Signing you in…",
+    "heading": "Welcome back",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "submit": "Log in",
+    "errors": {
+      "couldNotSignIn": "Could not sign in"
+    }
+  },
+  "setup": {
+    "heading": "Create the administrator",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "At least 8 characters",
+    "submit": "Create administrator",
+    "errors": {
+      "setupFailed": "Setup failed"
+    }
+  },
+  "notes": {
+    "list": {
+      "heading": "Notes",
+      "newNote": "New note",
+      "filters": {
+        "tags": "Tags",
+        "tagsPlaceholder": "array, dp",
+        "minImportance": "Min importance",
+        "updatedAfter": "Updated after",
+        "updatedBefore": "Updated before",
+        "apply": "Apply filters"
+      },
+      "empty": "No notes match these filters. Create one to start your archive.",
+      "errors": {
+        "couldNotLoad": "Could not load notes"
+      }
+    },
+    "new": {
+      "heading": "New note",
+      "submit": "Save note",
+      "errors": {
+        "couldNotCreate": "Could not create note"
+      }
+    },
+    "detail": {
+      "headingFallback": "Edit note",
+      "loading": "Loading note…",
+      "rewriteWithAi": "Rewrite with AI",
+      "aiRewriteHint": "AI rewrites only update the editor. Save when you are ready.",
+      "save": "Save",
+      "saveAndReturn": "Save and return",
+      "errors": {
+        "couldNotLoad": "Could not load note",
+        "couldNotRewrite": "Could not rewrite this field",
+        "couldNotSave": "Could not save note"
+      }
+    }
+  },
+  "import": {
+    "eyebrow": "Bring your archive together",
+    "heading": "Import Markdown",
+    "markdownSource": "Markdown source",
+    "markdownPlaceholder": "# Two Sum\n...",
+    "extractNotes": "Extract notes",
+    "reviewHeading": "Review extracted notes",
+    "reviewHint": "Collapsed by default — expand a problem to edit its fields.",
+    "importCount": "Import {count} notes",
+    "untitled": "Untitled",
+    "errors": {
+      "couldNotExtract": "Could not extract notes",
+      "couldNotImport": "Could not import notes"
+    }
+  },
+  "ask": {
+    "eyebrow": "Grounded in your practice",
+    "heading": "Ask your notes",
+    "question": "Question",
+    "questionPlaceholder": "When should I choose a monotonic stack?",
+    "optionalTags": "Optional tags",
+    "tagsPlaceholder": "stack, arrays",
+    "submit": "Ask notes",
+    "answerHeading": "Answer",
+    "thinking": "Thinking…",
+    "noAnswer": "No answer returned.",
+    "retrievedNotes": "Retrieved notes",
+    "retrievedNotesCount": "({count})",
+    "retrievedNotesHint": "Sources used for this answer — expand to review",
+    "noRelevantNotes": "No relevant notes were found.",
+    "errors": {
+      "couldNotAsk": "Could not ask your notes"
+    }
+  },
+  "settings": {
+    "eyebrow": "Your providers",
+    "heading": "Settings",
+    "llmConfiguration": "LLM configuration",
+    "chat": {
+      "heading": "Chat",
+      "verified": "verified",
+      "notVerified": "not verified",
+      "verify": "Verify chat"
+    },
+    "embeddings": {
+      "heading": "Embeddings",
+      "verified": "verified",
+      "notVerified": "not verified",
+      "verify": "Verify embeddings"
+    },
+    "editor": {
+      "heading": "Editor",
+      "preferredCodeLanguage": "Preferred code language",
+      "selectLanguagePlaceholder": "Select language",
+      "languages": {
+        "java": "Java",
+        "python": "Python",
+        "cpp": "C++"
+      }
+    },
+    "fields": {
+      "provider": "Provider",
+      "baseUrl": "Base URL",
+      "model": "Model",
+      "apiKey": "API key",
+      "apiKeyWithHint": "API key ({hint})",
+      "name": "Name",
+      "email": "Email",
+      "password": "Password"
+    },
+    "saveConfiguration": "Save configuration",
+    "admin": {
+      "usersHeading": "Admin: users",
+      "loadUsers": "Load users",
+      "createUser": "Create user"
+    },
+    "messages": {
+      "settingsSaved": "Settings saved.",
+      "userCreated": "User created."
+    },
+    "errors": {
+      "couldNotLoadLlm": "Could not load LLM settings",
+      "couldNotSave": "Could not save settings",
+      "verificationFailed": "Verification failed",
+      "couldNotListUsers": "Could not list users",
+      "couldNotCreateUser": "Could not create user"
+    }
+  }
+}

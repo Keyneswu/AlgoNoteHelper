@@ -1,8 +1,10 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { getImportanceMeta } from "@/lib/importance";
 
 type ImportanceBadgeProps = {
   value: number;
-  /** Show the High / Medium / Low label next to the icon */
   showLabel?: boolean;
   size?: "sm" | "md";
   className?: string;
@@ -12,7 +14,6 @@ function ImportanceIcon({ value, className }: { value: number; className?: strin
   const level = getImportanceMeta(value).value;
 
   if (level === 3) {
-    // Flame — high priority
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
         <path
@@ -32,7 +33,6 @@ function ImportanceIcon({ value, className }: { value: number; className?: strin
   }
 
   if (level === 2) {
-    // Alert triangle — medium priority
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
         <path
@@ -49,7 +49,6 @@ function ImportanceIcon({ value, className }: { value: number; className?: strin
     );
   }
 
-  // Leaf / check — low priority
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
       <path
@@ -76,18 +75,22 @@ export function ImportanceBadge({
   size = "md",
   className = "",
 }: ImportanceBadgeProps) {
+  const t = useTranslations("common.importance");
   const meta = getImportanceMeta(value);
+  const description = t(meta.descriptionKey);
   const iconSize = size === "sm" ? "size-3.5" : "size-4.5";
   const pad = size === "sm" ? "px-2 py-0.5 gap-1" : "px-2.5 py-1 gap-1.5";
 
   return (
     <span
-      title={meta.description}
-      aria-label={meta.description}
+      title={description}
+      aria-label={description}
       className={`inline-flex items-center rounded-full ring-1 ring-inset ${pad} ${meta.badgeClass} ${className}`}
     >
       <ImportanceIcon value={value} className={`${iconSize} ${meta.iconClass}`} />
-      {showLabel && <span className="text-xs font-medium tracking-wide">{meta.label}</span>}
+      {showLabel && (
+        <span className="text-xs font-medium tracking-wide">{t(meta.labelKey)}</span>
+      )}
     </span>
   );
 }

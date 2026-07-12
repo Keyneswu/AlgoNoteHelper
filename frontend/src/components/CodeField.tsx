@@ -46,12 +46,12 @@ export function CodeField({
 
   return (
     <div
-      className={`overflow-hidden rounded-lg border border-slate-200 bg-white text-sm ${className}`}
+      className={`overflow-hidden rounded-lg border border-border bg-inset text-sm ${className}`}
     >
       <CodeMirror
         value={value}
         height={height}
-        theme="light"
+        theme="dark"
         extensions={extensions}
         onChange={onChange}
         basicSetup={{

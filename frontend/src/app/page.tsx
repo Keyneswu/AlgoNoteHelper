@@ -2,10 +2,13 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
 
 export default function Home() {
+  const t = useTranslations("home");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
 
@@ -25,11 +28,11 @@ export default function Home() {
   }, [isPending, router, session]);
 
   return (
-    <main className="flex flex-1 items-center justify-center">
+    <main className="flex flex-1 items-center justify-center bg-canvas">
       <div className="space-y-4 text-center">
-        <p className="text-sm font-medium text-teal-800">AlgoNoteHelper</p>
-        <p className="text-slate-600">Preparing your workspace…</p>
-        <Button isDisabled>Loading</Button>
+        <p className="text-sm font-medium text-accent">{tCommon("brand")}</p>
+        <p className="text-muted">{t("preparingWorkspace")}</p>
+        <Button isDisabled>{tCommon("loading")}</Button>
       </div>
     </main>
   );

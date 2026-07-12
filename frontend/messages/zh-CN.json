@@ -1,0 +1,218 @@
+{
+  "nav": {
+    "brand": "AlgoNoteHelper",
+    "notes": "笔记",
+    "import": "导入",
+    "ask": "提问",
+    "settings": "设置",
+    "logout": "退出",
+    "login": "登录",
+    "language": "语言",
+    "localeEn": "English",
+    "localeZh": "中文"
+  },
+  "common": {
+    "brand": "AlgoNoteHelper",
+    "practiceArchive": "练习归档",
+    "loading": "加载中",
+    "actions": {
+      "add": "添加",
+      "close": "关闭",
+      "save": "保存",
+      "remove": "移除",
+      "backToNotes": "返回笔记"
+    },
+    "fields": {
+      "title": "标题",
+      "problemStatement": "题目描述",
+      "approach": "思路",
+      "code": "代码",
+      "tags": "标签",
+      "pitfalls": "易错点",
+      "importance": "重要度"
+    },
+    "placeholders": {
+      "titleExample": "两数之和",
+      "pitfallsOnePerLine": "每行一条",
+      "tagsCommaSeparated": "array, dp"
+    },
+    "importance": {
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "highPriority": "高优先级",
+      "mediumPriority": "中优先级",
+      "lowPriority": "低优先级",
+      "minOrHigher": "{level} 及以上",
+      "minFilterSuffix": "{level}+",
+      "any": "不限"
+    },
+    "tags": {
+      "noTags": "无标签",
+      "chooseTopics": "选择主题…",
+      "presets": "预设",
+      "yourTags": "你的标签",
+      "newTag": "新标签",
+      "newTagPlaceholder": "例如：单调栈",
+      "newTagAriaLabel": "新标签名称",
+      "removeTagAriaLabel": "移除 {tag}",
+      "clickToRemove": "点击移除"
+    },
+    "errors": {
+      "generic": "出了点问题"
+    }
+  },
+  "home": {
+    "preparingWorkspace": "正在准备工作区…"
+  },
+  "login": {
+    "signingIn": "正在登录…",
+    "heading": "欢迎回来",
+    "email": "邮箱",
+    "emailPlaceholder": "you@example.com",
+    "password": "密码",
+    "submit": "登录",
+    "errors": {
+      "couldNotSignIn": "无法登录"
+    }
+  },
+  "setup": {
+    "heading": "创建管理员",
+    "name": "姓名",
+    "namePlaceholder": "你的名字",
+    "email": "邮箱",
+    "emailPlaceholder": "you@example.com",
+    "password": "密码",
+    "passwordPlaceholder": "至少 8 个字符",
+    "submit": "创建管理员",
+    "errors": {
+      "setupFailed": "初始化失败"
+    }
+  },
+  "notes": {
+    "list": {
+      "heading": "笔记",
+      "newNote": "新建笔记",
+      "filters": {
+        "tags": "标签",
+        "tagsPlaceholder": "array, dp",
+        "minImportance": "最低重要度",
+        "updatedAfter": "更新晚于",
+        "updatedBefore": "更新早于",
+        "apply": "应用筛选"
+      },
+      "empty": "没有符合条件的笔记。创建一条，开始你的归档吧。",
+      "errors": {
+        "couldNotLoad": "无法加载笔记"
+      }
+    },
+    "new": {
+      "heading": "新建笔记",
+      "submit": "保存笔记",
+      "errors": {
+        "couldNotCreate": "无法创建笔记"
+      }
+    },
+    "detail": {
+      "headingFallback": "编辑笔记",
+      "loading": "正在加载笔记…",
+      "rewriteWithAi": "AI 改写",
+      "aiRewriteHint": "AI 改写只会更新编辑器内容，确认后请手动保存。",
+      "save": "保存",
+      "saveAndReturn": "保存并返回",
+      "errors": {
+        "couldNotLoad": "无法加载笔记",
+        "couldNotRewrite": "无法改写该字段",
+        "couldNotSave": "无法保存笔记"
+      }
+    }
+  },
+  "import": {
+    "eyebrow": "把归档汇到一处",
+    "heading": "导入 Markdown",
+    "markdownSource": "Markdown 原文",
+    "markdownPlaceholder": "# 两数之和\n...",
+    "extractNotes": "提取笔记",
+    "reviewHeading": "检查提取结果",
+    "reviewHint": "默认折叠 — 展开题目即可编辑字段。",
+    "importCount": "导入 {count} 条笔记",
+    "untitled": "未命名",
+    "errors": {
+      "couldNotExtract": "无法提取笔记",
+      "couldNotImport": "无法导入笔记"
+    }
+  },
+  "ask": {
+    "eyebrow": "基于你的练习笔记",
+    "heading": "向笔记提问",
+    "question": "问题",
+    "questionPlaceholder": "什么时候该用单调栈？",
+    "optionalTags": "可选标签",
+    "tagsPlaceholder": "stack, arrays",
+    "submit": "提问",
+    "answerHeading": "回答",
+    "thinking": "思考中…",
+    "noAnswer": "没有返回回答。",
+    "retrievedNotes": "检索到的笔记",
+    "retrievedNotesCount": "({count})",
+    "retrievedNotesHint": "本次回答引用的来源 — 展开可查看",
+    "noRelevantNotes": "未找到相关笔记。",
+    "errors": {
+      "couldNotAsk": "无法向笔记提问"
+    }
+  },
+  "settings": {
+    "eyebrow": "你的服务配置",
+    "heading": "设置",
+    "llmConfiguration": "大模型配置",
+    "chat": {
+      "heading": "对话模型",
+      "verified": "已验证",
+      "notVerified": "未验证",
+      "verify": "验证对话模型"
+    },
+    "embeddings": {
+      "heading": "向量模型",
+      "verified": "已验证",
+      "notVerified": "未验证",
+      "verify": "验证向量模型"
+    },
+    "editor": {
+      "heading": "编辑器",
+      "preferredCodeLanguage": "首选代码语言",
+      "selectLanguagePlaceholder": "选择语言",
+      "languages": {
+        "java": "Java",
+        "python": "Python",
+        "cpp": "C++"
+      }
+    },
+    "fields": {
+      "provider": "提供商",
+      "baseUrl": "Base URL",
+      "model": "模型",
+      "apiKey": "API 密钥",
+      "apiKeyWithHint": "API 密钥（{hint}）",
+      "name": "姓名",
+      "email": "邮箱",
+      "password": "密码"
+    },
+    "saveConfiguration": "保存配置",
+    "admin": {
+      "usersHeading": "管理：用户",
+      "loadUsers": "加载用户",
+      "createUser": "创建用户"
+    },
+    "messages": {
+      "settingsSaved": "设置已保存。",
+      "userCreated": "用户已创建。"
+    },
+    "errors": {
+      "couldNotLoadLlm": "无法加载大模型设置",
+      "couldNotSave": "无法保存设置",
+      "verificationFailed": "验证失败",
+      "couldNotListUsers": "无法列出用户",
+      "couldNotCreateUser": "无法创建用户"
+    }
+  }
+}

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card } from "@heroui/react";
 import { ImportanceBadge } from "@/components/ImportanceBadge";
 import { NoteTags } from "@/components/NoteTags";
@@ -11,16 +14,17 @@ type NoteCardProps = {
 };
 
 export function NoteCard({ note, href }: NoteCardProps) {
+  const t = useTranslations("common.tags");
   const meta = getImportanceMeta(note.importance);
   const content = (
-    <Card className="border border-slate-200 bg-white transition hover:border-teal-300 hover:shadow-sm">
+    <Card className="border border-border bg-surface transition hover:border-accent/40 hover:shadow-sm hover:shadow-black/30">
       <Card.Content className="relative overflow-hidden p-0">
         <div className={`absolute inset-y-0 left-0 w-1 ${meta.accentClass}`} aria-hidden />
         <div className="flex items-start gap-3 py-4 pr-4 pl-5">
           <ImportanceBadge value={note.importance} className="mt-0.5 shrink-0" />
           <div className="min-w-0 flex-1 space-y-2">
-            <h2 className="font-semibold text-slate-900 leading-snug">{note.title}</h2>
-            <NoteTags tags={note.tags} />
+            <h2 className="font-semibold leading-snug text-foreground">{note.title}</h2>
+            <NoteTags tags={note.tags} emptyLabel={t("noTags")} />
           </div>
         </div>
       </Card.Content>
@@ -29,7 +33,10 @@ export function NoteCard({ note, href }: NoteCardProps) {
 
   if (!href) return content;
   return (
-    <Link href={href} className="block rounded-xl outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600">
+    <Link
+      href={href}
+      className="block rounded-xl outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+    >
       {content}
     </Link>
   );

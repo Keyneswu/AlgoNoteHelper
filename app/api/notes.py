@@ -122,10 +122,22 @@ async def delete_note(
 
 
 IMPORT_SYSTEM = """You extract algorithm practice notes from Markdown.
+
 Return ONLY valid JSON: an array of objects with keys:
 title (string), statement (string), approach (string), code (string),
 pitfalls (string array), tags (string array),
 importance (integer 1-3 where 1=low, 2=medium, 3=high).
+
+Language rules (critical):
+- Preserve the source language exactly. If the Markdown is Chinese, keep Chinese
+  in title, statement, approach, and pitfalls. Do NOT translate into English
+  (or any other language).
+- Copy wording faithfully from the Markdown; you may lightly clean formatting,
+  but do not rewrite meaning or paraphrase into another language.
+- Code blocks stay as written (identifiers/comments unchanged).
+- Tags may stay lowercase English topic labels when the source already uses them
+  (e.g. "dp", "array"); do not translate prose fields into tag English.
+
 Sparse/empty fields are allowed. Do not invent problems that are not in the Markdown.
 If nothing can be extracted, return []."""
 
