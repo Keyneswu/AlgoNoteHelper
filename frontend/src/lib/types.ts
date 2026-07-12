@@ -6,6 +6,7 @@ export type NoteDraft = {
   pitfalls: string[];
   tags: string[];
   importance: number;
+  review_dates: string[];
   source_meta?: Record<string, unknown> | null;
 };
 
@@ -58,4 +59,5 @@ export const emptyNote: NoteDraft = {
   tags: [],
   /** Medium (yellow) — see `lib/importance.ts` (1 low / 2 medium / 3 high). */
   importance: 2,
+  review_dates: [],
 };

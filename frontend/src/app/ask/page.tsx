@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Card, Disclosure, Input, Label, TextArea, TextField } from "@heroui/react";
+import { Button, Card, Disclosure, Label, TextArea, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
 import { AskAnswer } from "@/components/AskAnswer";
+import { ImportanceMultiSelect } from "@/components/ImportanceMultiSelect";
 import { NoteCard } from "@/components/NoteCard";
+import { TagPicker } from "@/components/TagPicker";
 import { authClient } from "@/lib/auth-client";
 import { consumeAskSse } from "@/lib/ask-sse";
 import {
@@ -14,20 +16,27 @@ import {
   saveAskUiState,
   type AskResult,
 } from "@/lib/ask-store";
+import { ALL_IMPORTANCE_LEVELS, type ImportanceLevel } from "@/lib/importance";
 import type { PracticeNote } from "@/lib/types";
 
-function askPayload(question: string, tags: string) {
+function askPayload(question: string, tags: string[], importance: ImportanceLevel[]) {
   return {
     question,
-    tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean) || undefined,
+    tags: tags.length ? tags : undefined,
+    importance: importance.length ? importance : [...ALL_IMPORTANCE_LEVELS],
   };
 }
 
-async function askJson(question: string, tags: string, errorFallback: string): Promise<AskResult> {
+async function askJson(
+  question: string,
+  tags: string[],
+  importance: ImportanceLevel[],
+  errorFallback: string,
+): Promise<AskResult> {
   const response = await fetch("/api/bff/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(askPayload(question, tags)),
+    body: JSON.stringify(askPayload(question, tags, importance)),
   });
   const data = (await response.json()) as AskResult & { error?: string };
   if (!response.ok) {
@@ -42,7 +51,8 @@ export default function AskPage() {
   const { data: session, isPending } = authClient.useSession();
   const initial = loadAskUiState();
   const [question, setQuestion] = useState(initial.question);
-  const [tags, setTags] = useState(initial.tags);
+  const [tags, setTags] = useState<string[]>(initial.tags);
+  const [importance, setImportance] = useState<ImportanceLevel[]>(initial.importance);
   const [result, setResult] = useState<AskResult | null>(initial.result);
   const [isStreaming, setIsStreaming] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(initial.notesExpanded);
@@ -51,10 +61,10 @@ export default function AskPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Re-sync from memory/sessionStorage after mount (SSR-safe).
     const saved = loadAskUiState();
     setQuestion(saved.question);
     setTags(saved.tags);
+    setImportance(saved.importance);
     setResult(saved.result);
     setNotesExpanded(saved.notesExpanded);
     setError(saved.error);
@@ -63,8 +73,8 @@ export default function AskPage() {
 
   useEffect(() => {
     if (!ready) return;
-    saveAskUiState({ question, tags, result, notesExpanded, error });
-  }, [ready, question, tags, result, notesExpanded, error]);
+    saveAskUiState({ question, tags, importance, result, notesExpanded, error });
+  }, [ready, question, tags, importance, result, notesExpanded, error]);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -77,7 +87,7 @@ export default function AskPage() {
     setIsStreaming(true);
     setNotesExpanded(false);
 
-    const body = JSON.stringify(askPayload(question, tags));
+    const body = JSON.stringify(askPayload(question, tags, importance));
     const errorFallback = t("errors.couldNotAsk");
 
     try {
@@ -92,7 +102,7 @@ export default function AskPage() {
 
       const contentType = response.headers.get("content-type") ?? "";
       if (!response.ok || !contentType.includes("text/event-stream") || !response.body) {
-        const fallback = await askJson(question, tags, errorFallback);
+        const fallback = await askJson(question, tags, importance, errorFallback);
         setResult(fallback);
         return;
       }
@@ -117,7 +127,7 @@ export default function AskPage() {
       });
     } catch {
       try {
-        const fallback = await askJson(question, tags, errorFallback);
+        const fallback = await askJson(question, tags, importance, errorFallback);
         setResult(fallback);
         setError("");
       } catch (fallbackErr) {
@@ -149,10 +159,19 @@ export default function AskPage() {
               <Label>{t("question")}</Label>
               <TextArea rows={4} placeholder={t("questionPlaceholder")} />
             </TextField>
-            <TextField name="tags" value={tags} onChange={setTags}>
-              <Label>{t("optionalTags")}</Label>
-              <Input placeholder={t("tagsPlaceholder")} />
-            </TextField>
+            <div className="grid gap-4 md:grid-cols-2">
+              <TagPicker
+                variant="filter"
+                value={tags}
+                onChange={setTags}
+                label={t("optionalTags")}
+              />
+              <ImportanceMultiSelect
+                value={importance}
+                onChange={setImportance}
+                legend={t("importance")}
+              />
+            </div>
             <Button onPress={ask} isDisabled={!question.trim()} isPending={loading}>
               {t("submit")}
             </Button>

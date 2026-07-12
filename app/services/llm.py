@@ -83,6 +83,69 @@ async def chat_completion(
             ) from exc
 
 
+async def chat_completion_stream(
+    *,
+    base_url: str,
+    api_key: str,
+    model: str,
+    messages: list[dict[str, str]],
+    temperature: float = 0.2,
+):
+    """Yield content deltas from an OpenAI-compatible streaming chat completion.
+
+    Wire format: https://platform.openai.com/docs/api-reference/chat/streaming
+    (``data: {json}\\n\\n`` chunks ending with ``data: [DONE]``).
+    """
+    url = base_url.rstrip("/") + "/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+    }
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "stream": True,
+        "thinking": {"type": "disabled"},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        async with client.stream("POST", url, headers=headers, json=payload) as resp:
+            if resp.status_code >= 400:
+                body = (await resp.aread()).decode("utf-8", errors="replace")[:400]
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Chat provider error: {resp.status_code} {body}",
+                )
+            buffer = ""
+            async for text in resp.aiter_text():
+                buffer += text
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    if not line or line.startswith(":"):
+                        continue
+                    if not line.startswith("data:"):
+                        continue
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
+                        return
+                    try:
+                        data = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = data.get("choices") or []
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta") or {}
+                    content = delta.get("content")
+                    if content:
+                        yield str(content)
+                    elif delta.get("reasoning_content"):
+                        # Rare fallback if provider streams reasoning despite disabled thinking.
+                        yield str(delta["reasoning_content"])
+
+
 async def create_embedding(
     *,
     base_url: str,

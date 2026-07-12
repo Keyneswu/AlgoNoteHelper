@@ -34,6 +34,9 @@ class PracticeNote(Base):
     pitfalls: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
     tags: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
     importance: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    review_dates: Mapped[list[datetime]] = mapped_column(
+        ARRAY(DateTime(timezone=True)), default=list, nullable=False
+    )
     source_meta: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(256), nullable=True)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)

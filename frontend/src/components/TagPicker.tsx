@@ -10,16 +10,30 @@ type TagPickerProps = {
   value: string[];
   onChange: (tags: string[]) => void;
   name?: string;
+  /** `form` shows FieldLabel + custom tags; `filter` is for search bars. */
+  variant?: "form" | "filter";
+  label?: string;
+  allowCustom?: boolean;
 };
 
-export function TagPicker({ value, onChange, name = "tags" }: TagPickerProps) {
+export function TagPicker({
+  value,
+  onChange,
+  name = "tags",
+  variant = "form",
+  label,
+  allowCustom,
+}: TagPickerProps) {
   const t = useTranslations("common");
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
 
+  const isFilter = variant === "filter";
+  const canAddCustom = allowCustom ?? !isFilter;
   const selected = value.map(normalizeTag).filter(Boolean);
+  const title = label ?? (isFilter ? t("fields.tags") : t("fields.tags"));
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +75,11 @@ export function TagPicker({ value, onChange, name = "tags" }: TagPickerProps) {
 
   return (
     <div ref={rootRef} className="relative space-y-2">
-      <FieldLabel kind="tags">{t("fields.tags")}</FieldLabel>
+      {isFilter ? (
+        <p className="text-sm font-medium text-foreground/90">{title}</p>
+      ) : (
+        <FieldLabel kind="tags">{title}</FieldLabel>
+      )}
       <input type="hidden" name={name} value={selected.join(",")} readOnly />
 
       <button
@@ -101,7 +119,9 @@ export function TagPicker({ value, onChange, name = "tags" }: TagPickerProps) {
             </span>
           ))
         ) : (
-          <span className="text-sm text-muted">{t("tags.chooseTopics")}</span>
+          <span className="text-sm text-muted">
+            {isFilter ? t("tags.filterTopics") : t("tags.chooseTopics")}
+          </span>
         )}
         <span className="ml-auto text-xs font-medium text-accent">
           {open ? t("actions.close") : t("actions.add")}
@@ -157,34 +177,36 @@ export function TagPicker({ value, onChange, name = "tags" }: TagPickerProps) {
             </div>
           )}
 
-          <div className="mt-3 border-t border-border pt-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-              {t("tags.newTag")}
-            </p>
-            <div className="flex gap-2">
-              <Input
-                value={custom}
-                onChange={(event) => setCustom(event.target.value)}
-                placeholder={t("tags.newTagPlaceholder")}
-                aria-label={t("tags.newTagAriaLabel")}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addCustom();
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                isDisabled={!normalizeTag(custom)}
-                onPress={addCustom}
-              >
-                {t("actions.add")}
-              </Button>
+          {canAddCustom && (
+            <div className="mt-3 border-t border-border pt-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+                {t("tags.newTag")}
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={custom}
+                  onChange={(event) => setCustom(event.target.value)}
+                  placeholder={t("tags.newTagPlaceholder")}
+                  aria-label={t("tags.newTagAriaLabel")}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addCustom();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  isDisabled={!normalizeTag(custom)}
+                  onPress={addCustom}
+                >
+                  {t("actions.add")}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

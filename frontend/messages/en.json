@@ -50,6 +50,7 @@
     "tags": {
       "noTags": "No tags",
       "chooseTopics": "Choose topics…",
+      "filterTopics": "Filter by topics…",
       "presets": "Presets",
       "yourTags": "Your tags",
       "newTag": "New tag",
@@ -94,12 +95,11 @@
       "heading": "Notes",
       "newNote": "New note",
       "filters": {
+        "title": "Title",
+        "titlePlaceholder": "Search by problem name…",
         "tags": "Tags",
-        "tagsPlaceholder": "array, dp",
-        "minImportance": "Min importance",
-        "updatedAfter": "Updated after",
-        "updatedBefore": "Updated before",
-        "apply": "Apply filters"
+        "importance": "Importance",
+        "search": "Search"
       },
       "empty": "No notes match these filters. Create one to start your archive.",
       "errors": {
@@ -120,6 +120,13 @@
       "aiRewriteHint": "AI rewrites only update the editor. Save when you are ready.",
       "save": "Save",
       "saveAndReturn": "Save and return",
+      "practiceHistory": {
+        "heading": "Practice history",
+        "empty": "No practice dates yet.",
+        "record": "Record practice",
+        "hint": "Adds today’s date — save the note to keep it.",
+        "removeAriaLabel": "Remove {date}"
+      },
       "errors": {
         "couldNotLoad": "Could not load note",
         "couldNotRewrite": "Could not rewrite this field",
@@ -147,8 +154,8 @@
     "heading": "Ask your notes",
     "question": "Question",
     "questionPlaceholder": "When should I choose a monotonic stack?",
-    "optionalTags": "Optional tags",
-    "tagsPlaceholder": "stack, arrays",
+    "optionalTags": "Tags",
+    "importance": "Importance",
     "submit": "Ask notes",
     "answerHeading": "Answer",
     "thinking": "Thinking…",

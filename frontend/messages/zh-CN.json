@@ -50,6 +50,7 @@
     "tags": {
       "noTags": "无标签",
       "chooseTopics": "选择主题…",
+      "filterTopics": "按题型筛选…",
       "presets": "预设",
       "yourTags": "你的标签",
       "newTag": "新标签",
@@ -94,12 +95,11 @@
       "heading": "笔记",
       "newNote": "新建笔记",
       "filters": {
+        "title": "题名",
+        "titlePlaceholder": "按题目名称搜索…",
         "tags": "标签",
-        "tagsPlaceholder": "array, dp",
-        "minImportance": "最低重要度",
-        "updatedAfter": "更新晚于",
-        "updatedBefore": "更新早于",
-        "apply": "应用筛选"
+        "importance": "重要度",
+        "search": "搜索"
       },
       "empty": "没有符合条件的笔记。创建一条，开始你的归档吧。",
       "errors": {
@@ -120,6 +120,13 @@
       "aiRewriteHint": "AI 改写只会更新编辑器内容，确认后请手动保存。",
       "save": "保存",
       "saveAndReturn": "保存并返回",
+      "practiceHistory": {
+        "heading": "练习记录",
+        "empty": "还没有练习日期。",
+        "record": "记录一次练习",
+        "hint": "会加上今天的日期 — 保存笔记后才会持久化。",
+        "removeAriaLabel": "删除 {date}"
+      },
       "errors": {
         "couldNotLoad": "无法加载笔记",
         "couldNotRewrite": "无法改写该字段",
@@ -147,8 +154,8 @@
     "heading": "向笔记提问",
     "question": "问题",
     "questionPlaceholder": "什么时候该用单调栈？",
-    "optionalTags": "可选标签",
-    "tagsPlaceholder": "stack, arrays",
+    "optionalTags": "标签",
+    "importance": "重要度",
     "submit": "提问",
     "answerHeading": "回答",
     "thinking": "思考中…",

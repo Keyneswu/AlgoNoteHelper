@@ -13,6 +13,7 @@ class PracticeNoteBase(BaseModel):
     tags: list[str] = Field(default_factory=list)
     # 1=low (green), 2=medium (yellow), 3=high (red)
     importance: int = Field(default=2, ge=1, le=3)
+    review_dates: list[datetime] = Field(default_factory=list)
     source_meta: dict[str, Any] | None = None
 
 
@@ -28,6 +29,7 @@ class PracticeNoteUpdate(BaseModel):
     pitfalls: list[str] | None = None
     tags: list[str] | None = None
     importance: int | None = Field(default=None, ge=1, le=3)
+    review_dates: list[datetime] | None = None
     source_meta: dict[str, Any] | None = None
 
 
@@ -42,7 +44,9 @@ class PracticeNoteOut(PracticeNoteBase):
 
 
 class NoteFilterQuery(BaseModel):
+    q: str | None = None
     tags: list[str] | None = None
+    importance: list[int] | None = None
     importance_min: int | None = Field(default=None, ge=1, le=3)
     importance_max: int | None = Field(default=None, ge=1, le=3)
     created_from: datetime | None = None
@@ -117,6 +121,7 @@ class RewriteResponse(BaseModel):
 class AskRequest(BaseModel):
     question: str = Field(min_length=1)
     tags: list[str] | None = None
+    importance: list[int] | None = None
     importance_min: int | None = Field(default=None, ge=1, le=3)
     top_k: int = Field(default=8, ge=1, le=20)
 

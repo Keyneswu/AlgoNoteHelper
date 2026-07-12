@@ -5,25 +5,37 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Virtual environments
-.venv
+.venv/
+venv/
 
-# Env / secrets
+# Env / secrets — keep only .env.example tracked
 .env
-.env.local
-frontend/.env
-frontend/.env.local
+.env.*
+!.env.example
 
 # Node
 node_modules/
+.pnpm-store/
+frontend/node_modules/
 frontend/.next/
 frontend/out/
+frontend/.pnpm-store/
 
 # OS / IDE
 .DS_Store
 .idea/
 .vscode/
+*.swp
+*.swo
 
-# Misc
+# Misc / credentials
 *.log
+*.pem
+*.key

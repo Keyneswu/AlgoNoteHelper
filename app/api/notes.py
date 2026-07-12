@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import Select, and_, select
@@ -28,11 +29,27 @@ def _owner_query(user_id: str) -> Select[tuple[PracticeNote]]:
     return select(PracticeNote).where(PracticeNote.user_id == user_id)
 
 
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _seed_review_dates(dates: list[datetime] | None) -> list[datetime]:
+    if dates:
+        return list(dates)
+    return [_now()]
+
+
+def _escape_ilike(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 @router.get("", response_model=list[PracticeNoteOut])
 async def list_notes(
     user_id: str = Depends(require_bridged_user),
     db: AsyncSession = Depends(get_db),
+    q: str | None = Query(default=None),
     tags: list[str] | None = Query(default=None),
+    importance: list[int] | None = Query(default=None),
     importance_min: int | None = Query(default=None, ge=1, le=3),
     importance_max: int | None = Query(default=None, ge=1, le=3),
     created_from: str | None = None,
@@ -42,12 +59,22 @@ async def list_notes(
 ) -> list[PracticeNote]:
     stmt = _owner_query(user_id).order_by(PracticeNote.updated_at.desc())
     filters = []
+    title_q = (q or "").strip()
+    if title_q:
+        filters.append(PracticeNote.title.ilike(f"%{_escape_ilike(title_q)}%", escape="\\"))
     if tags:
-        filters.append(PracticeNote.tags.overlap(tags))
-    if importance_min is not None:
-        filters.append(PracticeNote.importance >= importance_min)
-    if importance_max is not None:
-        filters.append(PracticeNote.importance <= importance_max)
+        normalized = [tag.strip().lower() for tag in tags if tag.strip()]
+        if normalized:
+            filters.append(PracticeNote.tags.contains(normalized))
+    if importance:
+        levels = [level for level in importance if 1 <= level <= 3]
+        if levels:
+            filters.append(PracticeNote.importance.in_(levels))
+    elif importance_min is not None or importance_max is not None:
+        if importance_min is not None:
+            filters.append(PracticeNote.importance >= importance_min)
+        if importance_max is not None:
+            filters.append(PracticeNote.importance <= importance_max)
     if created_from:
         filters.append(PracticeNote.created_at >= created_from)
     if created_to:
@@ -68,7 +95,9 @@ async def create_note(
     user_id: str = Depends(require_bridged_user),
     db: AsyncSession = Depends(get_db),
 ) -> PracticeNote:
-    note = PracticeNote(user_id=user_id, **body.model_dump())
+    data = body.model_dump()
+    data["review_dates"] = _seed_review_dates(data.get("review_dates"))
+    note = PracticeNote(user_id=user_id, **data)
     db.add(note)
     await db.flush()
     await embed_note_if_ready(db, note)
@@ -194,7 +223,9 @@ async def import_commit(
 ) -> list[PracticeNote]:
     created: list[PracticeNote] = []
     for candidate in body.candidates:
-        note = PracticeNote(user_id=user_id, **candidate.model_dump())
+        data = candidate.model_dump()
+        data["review_dates"] = _seed_review_dates(data.get("review_dates"))
+        note = PracticeNote(user_id=user_id, **data)
         db.add(note)
         await db.flush()
         await embed_note_if_ready(db, note)

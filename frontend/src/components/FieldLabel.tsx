@@ -7,7 +7,8 @@ export type FieldKind =
   | "code"
   | "tags"
   | "pitfalls"
-  | "importance";
+  | "importance"
+  | "practiceHistory";
 
 const ICONS: Record<FieldKind, ReactNode> = {
   title: (
@@ -84,6 +85,23 @@ const ICONS: Record<FieldKind, ReactNode> = {
         strokeWidth="1.75"
         strokeLinejoin="round"
       />
+    </svg>
+  ),
+  practiceHistory: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className="size-3.5">
+      <path
+        d="M7 4v2M17 4v2M4.5 9h15"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <path
+        d="M6 6.5h12A1.5 1.5 0 0 1 19.5 8v11A1.5 1.5 0 0 1 18 20.5H6A1.5 1.5 0 0 1 4.5 19V8A1.5 1.5 0 0 1 6 6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path d="M9 13h2v2H9v-2Zm4 0h2v2h-2v-2Z" fill="currentColor" />
     </svg>
   ),
 };

@@ -1,18 +1,22 @@
 # practice-notes Specification
 
 ## Purpose
-TBD - created by archiving change init-algonote-helper. Update Purpose after archive.
+Practice note catalog owned by each user: entry model, Markdown import, and edit isolation rules.
 ## Requirements
 ### Requirement: Practice note entry model
-The system SHALL store practice note entries owned by a single user, including at least: title, optional problem statement, approach/notes body, optional code, pitfalls list, tags, importance level, created/updated timestamps, and source metadata when imported from Markdown.
+The system SHALL store practice note entries owned by a single user, including at least: title, optional problem statement, approach/notes body, optional code, pitfalls list, tags, importance level, practice/review dates list (`review_dates`), created/updated timestamps, and source metadata when imported from Markdown.
 
 #### Scenario: Create note with sparse fields
 - **WHEN** a user saves a practice note that has a title but empty problem statement and empty pitfalls
-- **THEN** the system persists the note successfully with empty fields allowed
+- **THEN** the system persists the note successfully with empty fields allowed and with `review_dates` seeded for the initial practice time
 
 #### Scenario: User isolation on list
 - **WHEN** user A lists practice notes
 - **THEN** the system returns only notes owned by user A
+
+#### Scenario: Review dates returned with note
+- **WHEN** the owner fetches a practice note
+- **THEN** the response includes `review_dates` as an ordered list of timestamps
 
 ### Requirement: Markdown import with preview
 The system SHALL accept Markdown input, use AI to extract zero or more practice note candidates from available content, and present an import preview where the user can edit, remove, or merge candidates before committing them to their catalog.
@@ -42,4 +46,3 @@ The system SHALL NOT grant admin role the ability to list, read, update, or dele
 #### Scenario: Admin opens notes UI
 - **WHEN** an admin uses the notes catalog UI
 - **THEN** they only see their own notes, same as a normal user
-

@@ -1,16 +1,31 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Card, Input, Label, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
-import { ImportanceIcon } from "@/components/ImportanceBadge";
+import { ImportanceMultiSelect } from "@/components/ImportanceMultiSelect";
 import { NoteCard } from "@/components/NoteCard";
+import { TagPicker } from "@/components/TagPicker";
 import { authClient } from "@/lib/auth-client";
-import { IMPORTANCE_LEVELS, type ImportanceLevel } from "@/lib/importance";
+import { ALL_IMPORTANCE_LEVELS, type ImportanceLevel } from "@/lib/importance";
 import type { PracticeNote } from "@/lib/types";
+
+type CommittedQuery = {
+  title: string;
+  tags: string[];
+};
+
+function buildNotesQuery(committed: CommittedQuery, importance: ImportanceLevel[]) {
+  const query = new URLSearchParams();
+  const title = committed.title.trim();
+  if (title) query.set("q", title);
+  committed.tags.forEach((tag) => query.append("tags", tag));
+  importance.forEach((level) => query.append("importance", String(level)));
+  return query;
+}
 
 export default function NotesPage() {
   const t = useTranslations("notes.list");
@@ -18,47 +33,62 @@ export default function NotesPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [notes, setNotes] = useState<PracticeNote[]>([]);
-  const [tags, setTags] = useState("");
-  const [importanceMin, setImportanceMin] = useState<ImportanceLevel | "">("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftTags, setDraftTags] = useState<string[]>([]);
+  const [committed, setCommitted] = useState<CommittedQuery>({ title: "", tags: [] });
+  const [importance, setImportance] = useState<ImportanceLevel[]>([...ALL_IMPORTANCE_LEVELS]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const requestIdRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
   }, [isPending, router, session]);
 
-  async function loadNotes() {
+  async function loadNotes(nextCommitted: CommittedQuery, nextImportance: ImportanceLevel[]) {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
+
     setLoading(true);
     setError("");
-    const query = new URLSearchParams();
-    tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean)
-      .forEach((tag) => query.append("tags", tag));
-    if (importanceMin) query.set("importance_min", String(importanceMin));
-    if (from) query.set("updated_from", from);
-    if (to) query.set("updated_to", `${to}T23:59:59`);
-    const response = await fetch(`/api/bff/notes?${query.toString()}`);
-    const data = (await response.json()) as PracticeNote[] | { error?: string };
-    setLoading(false);
-    if (!response.ok) {
-      return setError((data as { error?: string }).error ?? t("errors.couldNotLoad"));
+    const query = buildNotesQuery(nextCommitted, nextImportance);
+    try {
+      const response = await fetch(`/api/bff/notes?${query.toString()}`, {
+        signal: controller.signal,
+      });
+      const data = (await response.json()) as PracticeNote[] | { error?: string };
+      if (requestId !== requestIdRef.current) return;
+      if (!response.ok) {
+        setError((data as { error?: string }).error ?? t("errors.couldNotLoad"));
+        return;
+      }
+      setNotes(data as PracticeNote[]);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (requestId !== requestIdRef.current) return;
+      setError(t("errors.couldNotLoad"));
+    } finally {
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-    setNotes(data as PracticeNote[]);
   }
 
   useEffect(() => {
-    if (session) void loadNotes();
+    if (!session) return;
+    void loadNotes(committed, importance);
+    // Initial + importance live updates; title/tags only via commitSearch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [session, importance]);
 
-  function importanceLabel(value: number) {
-    if (value === 3) return tCommon("importance.high");
-    if (value === 1) return tCommon("importance.low");
-    return tCommon("importance.medium");
+  function commitSearch() {
+    const next = {
+      title: draftTitle.trim(),
+      tags: draftTags,
+    };
+    setCommitted(next);
+    void loadNotes(next, importance);
   }
 
   if (isPending || !session) return null;
@@ -79,64 +109,35 @@ export default function NotesPage() {
           </Link>
         </div>
         <Card className="border border-border bg-surface">
-          <Card.Content className="grid gap-4 md:grid-cols-4">
-            <TextField name="tags" value={tags} onChange={setTags}>
-              <Label>{t("filters.tags")}</Label>
-              <Input placeholder={t("filters.tagsPlaceholder")} />
-            </TextField>
-            <fieldset className="space-y-2 md:col-span-1">
-              <legend className="text-sm font-medium text-foreground/90">{t("filters.minImportance")}</legend>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setImportanceMin("")}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset transition ${
-                    importanceMin === ""
-                      ? "bg-raised text-foreground ring-accent"
-                      : "bg-inset text-muted ring-border hover:bg-raised"
-                  }`}
-                >
-                  {tCommon("importance.any")}
-                </button>
-                {IMPORTANCE_LEVELS.map((level) => {
-                  const selected = importanceMin === level.value;
-                  const label = importanceLabel(level.value);
-                  return (
-                    <button
-                      key={level.value}
-                      type="button"
-                      title={tCommon("importance.minOrHigher", { level: label })}
-                      aria-pressed={selected}
-                      onClick={() => setImportanceMin(level.value)}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset transition ${
-                        selected
-                          ? `${level.badgeClass} ring-2`
-                          : "bg-inset text-muted ring-border hover:bg-raised"
-                      }`}
-                    >
-                      <ImportanceIcon
-                        value={level.value}
-                        className={`size-3.5 ${selected ? level.iconClass : "text-muted"}`}
-                      />
-                      {tCommon("importance.minFilterSuffix", { level: label })}
-                    </button>
-                  );
-                })}
+          <Card.Content>
+            <form
+              className="grid gap-4 md:grid-cols-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                commitSearch();
+              }}
+            >
+              <TextField name="title" value={draftTitle} onChange={setDraftTitle}>
+                <Label>{t("filters.title")}</Label>
+                <Input placeholder={t("filters.titlePlaceholder")} />
+              </TextField>
+              <TagPicker
+                variant="filter"
+                value={draftTags}
+                onChange={setDraftTags}
+                label={t("filters.tags")}
+              />
+              <ImportanceMultiSelect
+                value={importance}
+                onChange={setImportance}
+                legend={t("filters.importance")}
+              />
+              <div className="flex items-end">
+                <Button type="submit" isPending={loading}>
+                  {t("filters.search")}
+                </Button>
               </div>
-            </fieldset>
-            <TextField name="from" type="date" value={from} onChange={setFrom}>
-              <Label>{t("filters.updatedAfter")}</Label>
-              <Input />
-            </TextField>
-            <TextField name="to" type="date" value={to} onChange={setTo}>
-              <Label>{t("filters.updatedBefore")}</Label>
-              <Input />
-            </TextField>
-            <div className="md:col-span-4">
-              <Button onPress={loadNotes} isPending={loading}>
-                {t("filters.apply")}
-              </Button>
-            </div>
+            </form>
           </Card.Content>
         </Card>
         {error && <p className="text-sm text-red-400">{error}</p>}

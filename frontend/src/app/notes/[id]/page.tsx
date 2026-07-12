@@ -10,6 +10,7 @@ import { FieldLabel } from "@/components/FieldLabel";
 import { ImportanceBadge } from "@/components/ImportanceBadge";
 import { ImportancePicker } from "@/components/ImportancePicker";
 import { NoteTags } from "@/components/NoteTags";
+import { PracticeHistory } from "@/components/PracticeHistory";
 import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
@@ -168,22 +169,28 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                 </div>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <TagPicker value={note.tags} onChange={(tags) => update("tags", tags)} />
-                  <TextField
-                    name="pitfalls"
-                    value={note.pitfalls.join("\n")}
-                    onChange={(value) =>
-                      update(
-                        "pitfalls",
-                        value
-                          .split("\n")
-                          .map((item) => item.trim())
-                          .filter(Boolean),
-                      )
-                    }
-                  >
-                    <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
-                    <TextArea rows={3} />
-                  </TextField>
+                  <div className="space-y-5">
+                    <TextField
+                      name="pitfalls"
+                      value={note.pitfalls.join("\n")}
+                      onChange={(value) =>
+                        update(
+                          "pitfalls",
+                          value
+                            .split("\n")
+                            .map((item) => item.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                    >
+                      <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
+                      <TextArea rows={3} />
+                    </TextField>
+                    <PracticeHistory
+                      dates={note.review_dates ?? []}
+                      onChange={(dates) => update("review_dates", dates)}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <FieldLabel kind="importance">{tCommon("fields.importance")}</FieldLabel>

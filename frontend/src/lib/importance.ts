@@ -15,7 +15,7 @@ export type ImportanceMeta = {
   chipColor: "danger" | "warning" | "success";
 };
 
-/** Higher number = more important (keeps API `importance_min` filters working). */
+/** Higher number = more important. */
 export const IMPORTANCE_LEVELS: ImportanceMeta[] = [
   {
     value: 3,
@@ -46,6 +46,10 @@ export const IMPORTANCE_LEVELS: ImportanceMeta[] = [
   },
 ];
 
+/** Default filter selection: all levels, High → Low display order. */
+export const ALL_IMPORTANCE_LEVELS: ImportanceLevel[] = IMPORTANCE_LEVELS.map(
+  (level) => level.value,
+);
 export function clampImportance(value: number): ImportanceLevel {
   if (value >= 3) return 3;
   if (value <= 1) return 1;
