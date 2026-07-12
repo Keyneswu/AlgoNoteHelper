@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Form, Input, Label, TextArea, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
+import { CodeField } from "@/components/CodeField";
 import { ImportancePicker } from "@/components/ImportancePicker";
+import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
 import { clampImportance, type ImportanceLevel } from "@/lib/importance";
 import { emptyNote, type NoteDraft } from "@/lib/types";
@@ -12,6 +14,7 @@ import { emptyNote, type NoteDraft } from "@/lib/types";
 export default function NewNotePage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
+  const codeLanguage = usePreferredCodeLanguage(!!session);
   const [note, setNote] = useState<NoteDraft>(emptyNote);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -60,10 +63,15 @@ export default function NewNotePage() {
                 <Label>Approach</Label>
                 <TextArea rows={5} />
               </TextField>
-              <TextField name="code" value={note.code} onChange={(value) => update("code", value)}>
+              <div className="space-y-2">
                 <Label>Code</Label>
-                <TextArea rows={10} className="font-mono text-sm" />
-              </TextField>
+                <CodeField
+                  value={note.code}
+                  onChange={(value) => update("code", value)}
+                  language={codeLanguage}
+                  rows={10}
+                />
+              </div>
               <div className="grid gap-5 sm:grid-cols-2">
                 <TextField
                   name="tags"

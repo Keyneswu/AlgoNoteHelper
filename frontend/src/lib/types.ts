@@ -17,6 +17,8 @@ export type PracticeNote = NoteDraft & {
   updated_at: string;
 };
 
+export type PreferredCodeLanguage = "java" | "python" | "cpp";
+
 export type LlmConfig = {
   chat_provider: string;
   chat_base_url: string;
@@ -28,6 +30,7 @@ export type LlmConfig = {
   embedding_model: string;
   embedding_api_key_hint: string | null;
   embedding_verified: boolean;
+  preferred_code_language: PreferredCodeLanguage;
 };
 
 export type LlmConfigUpdate = Partial<
@@ -39,6 +42,7 @@ export type LlmConfigUpdate = Partial<
     | "embedding_provider"
     | "embedding_base_url"
     | "embedding_model"
+    | "preferred_code_language"
   >
 > & {
   chat_api_key?: string;

@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
+/* Streamdown + code plugin (Tailwind v4) — https://streamdown.ai/docs/getting-started */
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/code/dist/*.js";
+
 :root {
   --background: #f7faf9;
   --foreground: #17221f;

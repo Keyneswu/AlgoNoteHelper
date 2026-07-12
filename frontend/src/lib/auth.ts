@@ -11,6 +11,13 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+  // localhost vs 127.0.0.1 are different origins; trust both in local dev.
+  // Docs: https://better-auth.com/docs/reference/security#trusted-origins
+  trustedOrigins: [
+    process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ],
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,

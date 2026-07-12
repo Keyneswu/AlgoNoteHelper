@@ -1,7 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiFetch, ApiError } from "@/lib/api";
+import { apiFetch, apiFetchStream, ApiError } from "@/lib/api";
 
 type RouteContext = { params: Promise<{ path: string[] }> };
+
+function isAskStreamPath(path: string[]): boolean {
+  return path.length === 2 && path[0] === "ask" && path[1] === "stream";
+}
+
+async function proxyStream(request: NextRequest, targetPath: string) {
+  const body = await request.text();
+  const upstream = await apiFetchStream(targetPath, {
+    method: "POST",
+    body,
+    headers: { "Content-Type": "application/json" },
+  });
+
+  const headers = new Headers();
+  headers.set("Content-Type", "text/event-stream; charset=utf-8");
+  headers.set("Cache-Control", "no-cache, no-transform");
+  headers.set("Connection", "keep-alive");
+  headers.set("X-Accel-Buffering", "no");
+
+  return new NextResponse(upstream.body, {
+    status: upstream.status,
+    headers,
+  });
+}
 
 async function proxy(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
@@ -10,6 +34,10 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const qs = url.search;
 
   try {
+    if (request.method === "POST" && isAskStreamPath(path)) {
+      return await proxyStream(request, `${targetPath}${qs}`);
+    }
+
     const method = request.method;
     const hasBody = method !== "GET" && method !== "HEAD";
     const body = hasBody ? await request.text() : undefined;

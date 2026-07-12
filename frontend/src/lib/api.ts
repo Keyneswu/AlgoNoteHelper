@@ -22,15 +22,20 @@ export async function requireSession() {
   return session;
 }
 
+function bridgedHeaders(sessionUserId: string, init?: HeadersInit): Headers {
+  const headersInit = new Headers(init);
+  headersInit.set("X-User-Id", sessionUserId);
+  headersInit.set("X-Internal-Secret", INTERNAL_API_SECRET);
+  return headersInit;
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
   const session = await requireSession();
   const url = `${FASTAPI_BASE_URL}${path}`;
-  const headersInit = new Headers(init.headers);
-  headersInit.set("X-User-Id", session.user.id);
-  headersInit.set("X-Internal-Secret", INTERNAL_API_SECRET);
+  const headersInit = bridgedHeaders(session.user.id, init.headers);
   if (init.body && !headersInit.has("Content-Type")) {
     headersInit.set("Content-Type", "application/json");
   }
@@ -43,4 +48,26 @@ export async function apiFetch<T>(
     return undefined as T;
   }
   return (await res.json()) as T;
+}
+
+/** Pass-through fetch for SSE / streaming upstream responses (no JSON buffering). */
+export async function apiFetchStream(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const session = await requireSession();
+  const url = `${FASTAPI_BASE_URL}${path}`;
+  const headersInit = bridgedHeaders(session.user.id, init.headers);
+  if (init.body && !headersInit.has("Content-Type")) {
+    headersInit.set("Content-Type", "application/json");
+  }
+  if (!headersInit.has("Accept")) {
+    headersInit.set("Accept", "text/event-stream");
+  }
+  const res = await fetch(url, { ...init, headers: headersInit, cache: "no-store" });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new ApiError(res.status, text || res.statusText);
+  }
+  return res;
 }

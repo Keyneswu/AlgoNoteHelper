@@ -2,12 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Form, Input, Label, TextField } from "@heroui/react";
+import { Button, Card, Form, Input, Label, ListBox, Select, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
 import { authClient } from "@/lib/auth-client";
-import type { LlmConfig, LlmConfigUpdate } from "@/lib/types";
+import type { LlmConfig, LlmConfigUpdate, PreferredCodeLanguage } from "@/lib/types";
 
 type AdminUser = { id: string; name: string; email: string; role?: string | null };
+
+const CODE_LANGUAGES: { id: PreferredCodeLanguage; label: string }[] = [
+  { id: "java", label: "Java" },
+  { id: "python", label: "Python" },
+  { id: "cpp", label: "C++" },
+];
+
 const blankConfig: LlmConfig = {
   chat_provider: "deepseek",
   chat_base_url: "https://api.deepseek.com",
@@ -19,6 +26,7 @@ const blankConfig: LlmConfig = {
   embedding_model: "text-embedding-v3",
   embedding_api_key_hint: null,
   embedding_verified: false,
+  preferred_code_language: "java",
 };
 
 export default function SettingsPage() {
@@ -65,6 +73,35 @@ export default function SettingsPage() {
       <section className="space-y-3 border-t border-slate-100 pt-5"><h3 className="font-medium">Embeddings <span className={config.embedding_verified ? "text-teal-700" : "text-amber-700"}>{config.embedding_verified ? "verified" : "not verified"}</span></h3>
         <div className="grid gap-3 sm:grid-cols-2"><SettingField label="Provider" value={config.embedding_provider} change={(value) => setConfig({ ...config, embedding_provider: value })} /><SettingField label="Base URL" value={config.embedding_base_url} change={(value) => setConfig({ ...config, embedding_base_url: value })} /><SettingField label="Model" value={config.embedding_model} change={(value) => setConfig({ ...config, embedding_model: value })} /><SettingField label={`API key ${config.embedding_api_key_hint ? `(${config.embedding_api_key_hint})` : ""}`} value={embeddingKey} change={setEmbeddingKey} type="password" /></div>
         <Button size="sm" variant="secondary" onPress={() => verify("embedding")} isPending={saving}>Verify embeddings</Button>
+      </section>
+      <section className="space-y-3 border-t border-slate-100 pt-5">
+        <h3 className="font-medium">Editor</h3>
+        <Select
+          className="max-w-xs"
+          placeholder="Select language"
+          value={config.preferred_code_language}
+          onChange={(value) => {
+            if (value === "java" || value === "python" || value === "cpp") {
+              setConfig({ ...config, preferred_code_language: value });
+            }
+          }}
+        >
+          <Label>Preferred code language</Label>
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              {CODE_LANGUAGES.map((lang) => (
+                <ListBox.Item key={lang.id} id={lang.id} textValue={lang.label}>
+                  {lang.label}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
+        </Select>
       </section>
       {message && <p className="text-sm text-slate-700">{message}</p>}<Button onPress={save} isPending={saving}>Save configuration</Button>
     </Card.Content></Card>

@@ -4,23 +4,25 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Form, Input, Label, TextArea, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
+import { CodeField } from "@/components/CodeField";
 import { ImportancePicker } from "@/components/ImportancePicker";
 import { NoteTags } from "@/components/NoteTags";
 import { ImportanceBadge } from "@/components/ImportanceBadge";
+import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
 import { clampImportance, type ImportanceLevel } from "@/lib/importance";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
 
-const fields: Array<{ key: "statement" | "approach" | "code"; label: string; rows: number }> = [
+const textFields: Array<{ key: "statement" | "approach"; label: string; rows: number }> = [
   { key: "statement", label: "Problem statement", rows: 5 },
   { key: "approach", label: "Approach", rows: 5 },
-  { key: "code", label: "Code", rows: 10 },
 ];
 
 export default function NotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
+  const codeLanguage = usePreferredCodeLanguage(!!session);
   const [note, setNote] = useState<PracticeNote | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -101,11 +103,11 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                   <Label>Title</Label>
                   <Input />
                 </TextField>
-                {fields.map(({ key, label, rows }) => (
+                {textFields.map(({ key, label, rows }) => (
                   <div key={key} className="space-y-2">
                     <TextField name={key} value={note[key]} onChange={(value) => update(key, value)}>
                       <Label>{label}</Label>
-                      <TextArea rows={rows} className={key === "code" ? "font-mono text-sm" : ""} />
+                      <TextArea rows={rows} />
                     </TextField>
                     <Button
                       type="button"
@@ -118,6 +120,24 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                     </Button>
                   </div>
                 ))}
+                <div className="space-y-2">
+                  <Label>Code</Label>
+                  <CodeField
+                    value={note.code}
+                    onChange={(value) => update("code", value)}
+                    language={codeLanguage}
+                    rows={10}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    isPending={rewriting === "code"}
+                    onPress={() => rewrite("code")}
+                  >
+                    Rewrite with AI
+                  </Button>
+                </div>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <TextField
                     name="tags"

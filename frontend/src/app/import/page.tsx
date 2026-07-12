@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Accordion, Button, Card, Input, Label, TextArea, TextField, type Key } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
+import { CodeField } from "@/components/CodeField";
 import { ImportanceBadge } from "@/components/ImportanceBadge";
 import { ImportancePicker } from "@/components/ImportancePicker";
 import { NoteTags } from "@/components/NoteTags";
+import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
 import { clampImportance, getImportanceMeta, type ImportanceLevel } from "@/lib/importance";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
@@ -16,6 +18,7 @@ type ImportCandidate = NoteDraft & { key: string };
 export default function ImportPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
+  const codeLanguage = usePreferredCodeLanguage(!!session);
   const [markdown, setMarkdown] = useState("");
   const [candidates, setCandidates] = useState<ImportCandidate[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set());
@@ -179,14 +182,15 @@ export default function ImportPage() {
                           <Label>Approach</Label>
                           <TextArea rows={3} />
                         </TextField>
-                        <TextField
-                          name={`code-${candidate.key}`}
-                          value={candidate.code}
-                          onChange={(value) => update(candidate.key, "code", value)}
-                        >
+                        <div className="space-y-2">
                           <Label>Code</Label>
-                          <TextArea rows={4} className="font-mono text-sm" />
-                        </TextField>
+                          <CodeField
+                            value={candidate.code}
+                            onChange={(value) => update(candidate.key, "code", value)}
+                            language={codeLanguage}
+                            rows={4}
+                          />
+                        </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                           <TextField
                             name={`tags-${candidate.key}`}
