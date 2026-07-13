@@ -1,237 +1,125 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Card, Disclosure, Label, TextArea, TextField } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
-import { AskAnswer } from "@/components/AskAnswer";
-import { DifficultyMultiSelect } from "@/components/DifficultyMultiSelect";
-import { NoteCard } from "@/components/NoteCard";
-import { TagPicker } from "@/components/TagPicker";
-import { authClient } from "@/lib/auth-client";
-import { consumeAskSse } from "@/lib/ask-sse";
+import { AskContextBar } from "@/components/AskContextBar";
 import {
-  loadAskUiState,
-  saveAskUiState,
-  type AskResult,
+  AskRuntimeProvider,
+  useMergeNotesAdded,
+} from "@/components/AskRuntimeProvider";
+import { AskThread } from "@/components/AskThread";
+import { authClient } from "@/lib/auth-client";
+import {
+  clearAskSession,
+  loadAskSession,
+  saveAskSession,
+  type AskChatMessage,
 } from "@/lib/ask-store";
-import { ALL_DIFFICULTY_LEVELS, type DifficultyLevel } from "@/lib/difficulty";
+import { ALL_DIFFICULTY_LEVELS } from "@/lib/difficulty";
 import type { PracticeNote } from "@/lib/types";
 
-function askPayload(question: string, tags: string[], difficulty: DifficultyLevel[]) {
-  return {
-    question,
-    tags: tags.length ? tags : undefined,
-    difficulty: difficulty.length ? difficulty : [...ALL_DIFFICULTY_LEVELS],
-  };
-}
-
-async function askJson(
-  question: string,
-  tags: string[],
-  difficulty: DifficultyLevel[],
-  errorFallback: string,
-): Promise<AskResult> {
-  const response = await fetch("/api/bff/ask", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(askPayload(question, tags, difficulty)),
-  });
-  const data = (await response.json()) as AskResult & { error?: string };
-  if (!response.ok) {
-    throw new Error(data.error ?? errorFallback);
-  }
-  return data;
-}
+/** Filters are intentionally not exposed in v1 UI — always search the full pool. */
+const DEFAULT_FILTERS = {
+  tags: [] as string[],
+  difficulty: [...ALL_DIFFICULTY_LEVELS],
+};
 
 export default function AskPage() {
   const t = useTranslations("ask");
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
-  const initial = loadAskUiState();
-  const [question, setQuestion] = useState(initial.question);
-  const [tags, setTags] = useState<string[]>(initial.tags);
-  const [difficulty, setDifficulty] = useState<DifficultyLevel[]>(initial.difficulty);
-  const [result, setResult] = useState<AskResult | null>(initial.result);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [notesExpanded, setNotesExpanded] = useState(initial.notesExpanded);
-  const [error, setError] = useState(initial.error);
-  const [loading, setLoading] = useState(false);
+
+  const initial = loadAskSession();
+  const [contextNotes, setContextNotes] = useState<PracticeNote[]>(initial.contextNotes);
+  const [messages, setMessages] = useState<AskChatMessage[]>(initial.messages);
+  const [sessionKey, setSessionKey] = useState(0);
   const [ready, setReady] = useState(false);
 
+  const onNotesAdded = useMergeNotesAdded(setContextNotes);
+  const onTranscript = useCallback((next: AskChatMessage[]) => {
+    setMessages(next);
+  }, []);
+
   useEffect(() => {
-    const saved = loadAskUiState();
-    setQuestion(saved.question);
-    setTags(saved.tags);
-    setDifficulty(saved.difficulty);
-    setResult(saved.result);
-    setNotesExpanded(saved.notesExpanded);
-    setError(saved.error);
+    const saved = loadAskSession();
+    setContextNotes(saved.contextNotes);
+    setMessages(saved.messages);
     setReady(true);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    saveAskUiState({ question, tags, difficulty, result, notesExpanded, error });
-  }, [ready, question, tags, difficulty, result, notesExpanded, error]);
+    saveAskSession({
+      tags: DEFAULT_FILTERS.tags,
+      difficulty: DEFAULT_FILTERS.difficulty,
+      contextNotes,
+      messages,
+    });
+  }, [ready, contextNotes, messages]);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
   }, [isPending, router, session]);
 
-  async function ask() {
-    setLoading(true);
-    setError("");
-    setResult({ notes: [], answer: "" });
-    setIsStreaming(true);
-    setNotesExpanded(false);
+  function removeNote(noteId: number) {
+    setContextNotes((prev) => prev.filter((n) => n.id !== noteId));
+  }
 
-    const body = JSON.stringify(askPayload(question, tags, difficulty));
-    const errorFallback = t("errors.couldNotAsk");
-
-    try {
-      const response = await fetch("/api/bff/ask/stream", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
-        body,
-      });
-
-      const contentType = response.headers.get("content-type") ?? "";
-      if (!response.ok || !contentType.includes("text/event-stream") || !response.body) {
-        const fallback = await askJson(question, tags, difficulty, errorFallback);
-        setResult(fallback);
-        return;
-      }
-
-      await consumeAskSse(response, {
-        onNotes: (notes) => {
-          setResult((prev) => ({
-            notes: Array.isArray(notes) ? (notes as PracticeNote[]) : [],
-            answer: prev?.answer ?? "",
-          }));
-        },
-        onToken: (text) => {
-          setResult((prev) => ({
-            notes: prev?.notes ?? [],
-            answer: (prev?.answer ?? "") + text,
-          }));
-        },
-        onDone: () => {},
-        onError: () => {
-          /* consumeAskSse throws after this → JSON fallback */
-        },
-      });
-    } catch {
-      try {
-        const fallback = await askJson(question, tags, difficulty, errorFallback);
-        setResult(fallback);
-        setError("");
-      } catch (fallbackErr) {
-        setResult(null);
-        setError(
-          fallbackErr instanceof Error
-            ? fallbackErr.message
-            : errorFallback,
-        );
-      }
-    } finally {
-      setIsStreaming(false);
-      setLoading(false);
-    }
+  function resetSession() {
+    clearAskSession();
+    setContextNotes([]);
+    setMessages([]);
+    setSessionKey((k) => k + 1);
   }
 
   if (isPending || !session) return null;
-  return (
-    <div className="min-h-screen bg-canvas">
-      <AppNav />
-      <main className="mx-auto max-w-6xl space-y-6 p-5">
-        <div>
-          <p className="text-sm font-semibold text-accent">{t("eyebrow")}</p>
-          <h1 className="text-3xl font-semibold text-foreground">{t("heading")}</h1>
-        </div>
-        <Card className="border border-border bg-surface">
-          <Card.Content className="space-y-4">
-            <TextField name="question" value={question} onChange={setQuestion}>
-              <Label>{t("question")}</Label>
-              <TextArea rows={4} placeholder={t("questionPlaceholder")} />
-            </TextField>
-            <div className="grid gap-4 md:grid-cols-2">
-              <TagPicker
-                variant="filter"
-                value={tags}
-                onChange={setTags}
-                label={t("optionalTags")}
-              />
-              <DifficultyMultiSelect
-                value={difficulty}
-                onChange={setDifficulty}
-                legend={t("difficulty")}
-              />
-            </div>
-            <Button onPress={ask} isDisabled={!question.trim()} isPending={loading}>
-              {t("submit")}
-            </Button>
-          </Card.Content>
-        </Card>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        {result && (
-          <section className="space-y-4">
-            <Card className="border border-accent/30 bg-accent/10">
-              <Card.Header>
-                <h2 className="text-xl font-semibold text-accent">{t("answerHeading")}</h2>
-              </Card.Header>
-              <Card.Content>
-                <AskAnswer
-                  markdown={result.answer ?? ""}
-                  isStreaming={isStreaming}
-                />
-              </Card.Content>
-            </Card>
 
-            <Disclosure
-              isExpanded={notesExpanded}
-              onExpandedChange={setNotesExpanded}
-              className="rounded-xl border border-border bg-surface"
-            >
-              <Disclosure.Heading>
-                <Button
-                  slot="trigger"
-                  variant="tertiary"
-                  className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left hover:bg-raised/50"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-foreground">
-                      {t("retrievedNotes")}
-                      <span className="ml-2 font-normal text-muted">
-                        {t("retrievedNotesCount", { count: result.notes.length })}
-                      </span>
-                    </span>
-                    <span className="mt-0.5 block text-xs font-normal text-muted">
-                      {t("retrievedNotesHint")}
-                    </span>
-                  </span>
-                  <Disclosure.Indicator className="shrink-0 text-muted" />
-                </Button>
-              </Disclosure.Heading>
-              <Disclosure.Content>
-                <Disclosure.Body className="space-y-3 border-t border-border px-4 py-4">
-                  {result.notes.length ? (
-                    result.notes.map((note) => (
-                      <NoteCard key={note.id} note={note} href={`/notes/${note.id}`} />
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted">{t("noRelevantNotes")}</p>
-                  )}
-                </Disclosure.Body>
-              </Disclosure.Content>
-            </Disclosure>
-          </section>
-        )}
-      </main>
+  return (
+    <div className="ask-shell flex h-dvh flex-col overflow-hidden bg-canvas">
+      <div className="shrink-0">
+        <AppNav />
+      </div>
+
+      {ready ? (
+        <AskRuntimeProvider
+          key={sessionKey}
+          filters={DEFAULT_FILTERS}
+          contextNotes={contextNotes}
+          initialMessages={messages}
+          onNotesAdded={onNotesAdded}
+          onTranscript={onTranscript}
+        >
+          <div className="flex min-h-0 flex-1">
+            <aside className="ask-rail hidden w-[240px] shrink-0 md:flex md:flex-col lg:w-[260px]">
+              <AskContextBar
+                notes={contextNotes}
+                onRemove={removeNote}
+                onNewSession={resetSession}
+                variant="rail"
+              />
+            </aside>
+
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="shrink-0 border-b border-border/60 md:hidden">
+                <div className="flex items-center justify-between gap-2 px-4 py-2">
+                  <p className="text-sm font-semibold text-foreground">{t("heading")}</p>
+                  <Button size="sm" variant="tertiary" onPress={resetSession}>
+                    {t("newSession")}
+                  </Button>
+                </div>
+                <AskContextBar notes={contextNotes} onRemove={removeNote} variant="mobile" />
+              </div>
+
+              <div className="min-h-0 flex-1">
+                <AskThread />
+              </div>
+            </section>
+          </div>
+        </AskRuntimeProvider>
+      ) : null}
     </div>
   );
 }

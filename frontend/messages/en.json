@@ -198,6 +198,12 @@
     "optionalTags": "Tags",
     "difficulty": "Difficulty",
     "submit": "Ask notes",
+    "send": "Send",
+    "cancel": "Stop",
+    "newSession": "New session",
+    "composerPlaceholder": "Ask a follow-up or a new question…",
+    "welcomeHeading": "Chat with your notes",
+    "welcomeHint": "Each turn retrieves more notes into the context bar. Remove any you do not want used for grounding.",
     "answerHeading": "Answer",
     "thinking": "Thinking…",
     "noAnswer": "No answer returned.",
@@ -205,6 +211,14 @@
     "retrievedNotesCount": "({count})",
     "retrievedNotesHint": "Sources used for this answer — expand to review",
     "noRelevantNotes": "No relevant notes were found.",
+    "contextBar": {
+      "heading": "Context notes",
+      "count": "({count})",
+      "hint": "AI retrieval only adds notes. Remove ones you do not want in grounding.",
+      "hintShort": "used for grounding",
+      "empty": "No notes in context yet. Ask a question to retrieve some.",
+      "remove": "Remove from context"
+    },
     "errors": {
       "couldNotAsk": "Could not ask your notes"
     }

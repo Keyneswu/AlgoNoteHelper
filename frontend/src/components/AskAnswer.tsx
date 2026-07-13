@@ -5,6 +5,8 @@ import { Streamdown } from "streamdown";
 import { createCodePlugin } from "@streamdown/code";
 
 const code = createCodePlugin({
+  // Both slots dark: our UI is always dark; OS light mode must not flip Shiki to light.
+  // Docs: https://streamdown.ai/docs/plugins/code
   themes: ["github-dark", "github-dark"],
 });
 
@@ -16,6 +18,7 @@ type AskAnswerProps = {
 /**
  * Renders Path 2 Ask answers as GFM Markdown with Shiki-highlighted fences.
  * Docs: https://streamdown.ai/docs/plugins/code
+ * Inline / block chrome overrides: `.ask-answer` in globals.css
  */
 export function AskAnswer({ markdown, isStreaming = false }: AskAnswerProps) {
   const t = useTranslations("ask");
@@ -28,11 +31,18 @@ export function AskAnswer({ markdown, isStreaming = false }: AskAnswerProps) {
   }
 
   return (
-    <div className="ask-answer text-base leading-7 text-foreground [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border [&_pre]:bg-inset [&_pre]:p-3 [&_code]:text-sm">
+    <div className="ask-answer text-base leading-7 text-foreground">
       <Streamdown
         mode={isStreaming ? "streaming" : "static"}
         isAnimating={isStreaming}
         plugins={{ code }}
+        components={{
+          // Do not forward Streamdown's default `bg-muted` class — our --muted is a text color.
+          // Docs: https://streamdown.ai/docs/components
+          inlineCode: ({ children }) => (
+            <code data-streamdown="inline-code">{children}</code>
+          ),
+        }}
       >
         {markdown}
       </Streamdown>

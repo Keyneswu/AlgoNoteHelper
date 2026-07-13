@@ -120,15 +120,25 @@ class GenerateApproachRequest(BaseModel):
     code: str = ""
 
 
+class AskChatMessage(BaseModel):
+    role: Literal["user", "assistant", "system"]
+    content: str = Field(min_length=1)
+
+
 class AskRequest(BaseModel):
     question: str = Field(min_length=1)
     tags: list[str] | None = None
     difficulty: list[int] | None = None
     top_k: int = Field(default=8, ge=1, le=20)
+    # Prior turns in the same session (excluding the current question).
+    messages: list[AskChatMessage] = Field(default_factory=list)
+    # Note ids currently in the client Context Bar (owned by caller).
+    context_note_ids: list[int] = Field(default_factory=list)
 
 
 class AskResponse(BaseModel):
     notes: list[PracticeNoteOut]
+    notes_added: list[PracticeNoteOut] = Field(default_factory=list)
     answer: str | None
 
 

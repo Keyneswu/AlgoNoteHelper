@@ -198,6 +198,12 @@
     "optionalTags": "标签",
     "difficulty": "难度",
     "submit": "提问",
+    "send": "发送",
+    "cancel": "停止",
+    "newSession": "新会话",
+    "composerPlaceholder": "继续追问，或换一个新问题…",
+    "welcomeHeading": "和你的笔记对话",
+    "welcomeHint": "每一轮都会检索并合并更多笔记到左侧上下文栏。不想用作 grounding 的可以手动移除。",
     "answerHeading": "回答",
     "thinking": "思考中…",
     "noAnswer": "没有返回回答。",
@@ -205,6 +211,14 @@
     "retrievedNotesCount": "({count})",
     "retrievedNotesHint": "本次回答引用的来源 — 展开可查看",
     "noRelevantNotes": "未找到相关笔记。",
+    "contextBar": {
+      "heading": "上下文笔记",
+      "count": "({count})",
+      "hint": "AI 召回只会往里加；不需要的请手动移除。",
+      "hintShort": "回答会引用这些笔记",
+      "empty": "上下文还是空的。先问一个问题，系统会检索相关笔记。",
+      "remove": "从上下文移除"
+    },
     "errors": {
       "couldNotAsk": "无法向笔记提问"
     }

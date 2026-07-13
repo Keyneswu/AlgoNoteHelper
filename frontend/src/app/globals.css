@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
+/* Class / data-theme driven dark mode (app forces dark UI regardless of OS).
+   Without this, Streamdown's `dark:` utilities follow prefers-color-scheme only,
+   so light Shiki tokens + light `bg-muted` show up on our dark canvas. */
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 /* Streamdown + code plugin (Tailwind v4) — https://streamdown.ai/docs/getting-started */
 @source "../../node_modules/streamdown/dist/*.js";
 @source "../../node_modules/@streamdown/code/dist/*.js";
@@ -55,7 +60,7 @@
   --field-radius: 0.75rem;
 
   /* Font Family */
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-geist-sans);
 
   /* App aliases used by Tailwind utility classes */
   --canvas: var(--background);
@@ -129,7 +134,7 @@
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius-DEFAULT: var(--radius);
 }
@@ -140,7 +145,7 @@ html[data-theme="dark"],
 html[data-theme="dark"] body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 .accordion__trigger.import-candidate-trigger {
@@ -151,3 +156,43 @@ html[data-theme="dark"] body {
   align-items: center;
   gap: 0.75rem;
 }
+
+/* Ask: one continuous canvas — rail is a companion column, not a second app chrome */
+.ask-shell .ask-rail {
+  border-right: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  background: var(--canvas);
+}
+
+/* Ask answer markdown — readable code on forced-dark canvas
+   Root cause: Streamdown uses `bg-muted` / light Shiki when `dark:` follows OS, not html.dark. */
+.ask-answer [data-streamdown="inline-code"] {
+  border-radius: 0.35rem;
+  border: 1px solid color-mix(in oklab, var(--border) 85%, transparent);
+  background: var(--inset);
+  color: oklch(88% 0.12 148.67);
+  padding: 0.12rem 0.4rem;
+  font-size: 0.875em;
+  font-weight: 500;
+}
+
+.ask-answer [data-streamdown="code-block"] {
+  background: var(--inset) !important;
+  border-color: color-mix(in oklab, var(--border) 80%, transparent) !important;
+}
+
+.ask-answer [data-streamdown="code-block-header"] {
+  color: color-mix(in oklab, var(--foreground) 82%, transparent) !important;
+  opacity: 1;
+}
+
+.ask-answer [data-streamdown="code-block-body"],
+.ask-answer [data-streamdown="code-block-body"] pre {
+  background: var(--inset) !important;
+  border-color: transparent !important;
+}
+
+/* Force dark Shiki tokens even if OS prefers light (see @custom-variant dark above) */
+.ask-answer [data-streamdown="code-block-body"] code span {
+  color: var(--shiki-dark, var(--sdm-c, var(--foreground))) !important;
+}
+

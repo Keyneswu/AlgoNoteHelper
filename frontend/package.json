@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@assistant-ui/react": "^0.14.26",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/lang-cpp": "^6.0.3",
     "@codemirror/lang-java": "^6.0.2",
