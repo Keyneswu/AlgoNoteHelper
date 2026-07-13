@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Button, Card, Disclosure, Label, TextArea, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
 import { AskAnswer } from "@/components/AskAnswer";
-import { ImportanceMultiSelect } from "@/components/ImportanceMultiSelect";
+import { DifficultyMultiSelect } from "@/components/DifficultyMultiSelect";
 import { NoteCard } from "@/components/NoteCard";
 import { TagPicker } from "@/components/TagPicker";
 import { authClient } from "@/lib/auth-client";
@@ -16,27 +16,27 @@ import {
   saveAskUiState,
   type AskResult,
 } from "@/lib/ask-store";
-import { ALL_IMPORTANCE_LEVELS, type ImportanceLevel } from "@/lib/importance";
+import { ALL_DIFFICULTY_LEVELS, type DifficultyLevel } from "@/lib/difficulty";
 import type { PracticeNote } from "@/lib/types";
 
-function askPayload(question: string, tags: string[], importance: ImportanceLevel[]) {
+function askPayload(question: string, tags: string[], difficulty: DifficultyLevel[]) {
   return {
     question,
     tags: tags.length ? tags : undefined,
-    importance: importance.length ? importance : [...ALL_IMPORTANCE_LEVELS],
+    difficulty: difficulty.length ? difficulty : [...ALL_DIFFICULTY_LEVELS],
   };
 }
 
 async function askJson(
   question: string,
   tags: string[],
-  importance: ImportanceLevel[],
+  difficulty: DifficultyLevel[],
   errorFallback: string,
 ): Promise<AskResult> {
   const response = await fetch("/api/bff/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(askPayload(question, tags, importance)),
+    body: JSON.stringify(askPayload(question, tags, difficulty)),
   });
   const data = (await response.json()) as AskResult & { error?: string };
   if (!response.ok) {
@@ -52,7 +52,7 @@ export default function AskPage() {
   const initial = loadAskUiState();
   const [question, setQuestion] = useState(initial.question);
   const [tags, setTags] = useState<string[]>(initial.tags);
-  const [importance, setImportance] = useState<ImportanceLevel[]>(initial.importance);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel[]>(initial.difficulty);
   const [result, setResult] = useState<AskResult | null>(initial.result);
   const [isStreaming, setIsStreaming] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(initial.notesExpanded);
@@ -64,7 +64,7 @@ export default function AskPage() {
     const saved = loadAskUiState();
     setQuestion(saved.question);
     setTags(saved.tags);
-    setImportance(saved.importance);
+    setDifficulty(saved.difficulty);
     setResult(saved.result);
     setNotesExpanded(saved.notesExpanded);
     setError(saved.error);
@@ -73,8 +73,8 @@ export default function AskPage() {
 
   useEffect(() => {
     if (!ready) return;
-    saveAskUiState({ question, tags, importance, result, notesExpanded, error });
-  }, [ready, question, tags, importance, result, notesExpanded, error]);
+    saveAskUiState({ question, tags, difficulty, result, notesExpanded, error });
+  }, [ready, question, tags, difficulty, result, notesExpanded, error]);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -87,7 +87,7 @@ export default function AskPage() {
     setIsStreaming(true);
     setNotesExpanded(false);
 
-    const body = JSON.stringify(askPayload(question, tags, importance));
+    const body = JSON.stringify(askPayload(question, tags, difficulty));
     const errorFallback = t("errors.couldNotAsk");
 
     try {
@@ -102,7 +102,7 @@ export default function AskPage() {
 
       const contentType = response.headers.get("content-type") ?? "";
       if (!response.ok || !contentType.includes("text/event-stream") || !response.body) {
-        const fallback = await askJson(question, tags, importance, errorFallback);
+        const fallback = await askJson(question, tags, difficulty, errorFallback);
         setResult(fallback);
         return;
       }
@@ -127,7 +127,7 @@ export default function AskPage() {
       });
     } catch {
       try {
-        const fallback = await askJson(question, tags, importance, errorFallback);
+        const fallback = await askJson(question, tags, difficulty, errorFallback);
         setResult(fallback);
         setError("");
       } catch (fallbackErr) {
@@ -166,10 +166,10 @@ export default function AskPage() {
                 onChange={setTags}
                 label={t("optionalTags")}
               />
-              <ImportanceMultiSelect
-                value={importance}
-                onChange={setImportance}
-                legend={t("importance")}
+              <DifficultyMultiSelect
+                value={difficulty}
+                onChange={setDifficulty}
+                legend={t("difficulty")}
               />
             </div>
             <Button onPress={ask} isDisabled={!question.trim()} isPending={loading}>

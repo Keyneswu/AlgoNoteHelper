@@ -1,31 +1,31 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { IMPORTANCE_LEVELS, type ImportanceLevel } from "@/lib/importance";
-import { ImportanceIcon } from "@/components/ImportanceBadge";
+import { DIFFICULTY_LEVELS, type DifficultyLevel } from "@/lib/difficulty";
+import { DifficultyIcon } from "@/components/DifficultyBadge";
 
-type ImportancePickerProps = {
+type DifficultyPickerProps = {
   value: number;
-  onChange: (value: ImportanceLevel) => void;
+  onChange: (value: DifficultyLevel) => void;
   name?: string;
   showLegend?: boolean;
 };
 
-export function ImportancePicker({
+export function DifficultyPicker({
   value,
   onChange,
-  name = "importance",
+  name = "difficulty",
   showLegend = true,
-}: ImportancePickerProps) {
+}: DifficultyPickerProps) {
   const t = useTranslations("common");
 
   return (
     <fieldset className="space-y-2">
       {showLegend && (
-        <legend className="text-sm font-medium text-foreground/90">{t("fields.importance")}</legend>
+        <legend className="text-sm font-medium text-foreground/90">{t("fields.difficulty")}</legend>
       )}
-      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("fields.importance")}>
-        {IMPORTANCE_LEVELS.map((level) => {
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("fields.difficulty")}>
+        {DIFFICULTY_LEVELS.map((level) => {
           const selected = value === level.value;
           return (
             <button
@@ -41,11 +41,11 @@ export function ImportancePicker({
                   : "bg-inset text-muted ring-border hover:bg-raised"
               }`}
             >
-              <ImportanceIcon
+              <DifficultyIcon
                 value={level.value}
                 className={`size-4 ${selected ? level.iconClass : "text-muted"}`}
               />
-              {t(`importance.${level.labelKey}`)}
+              {t(`difficulty.${level.labelKey}`)}
             </button>
           );
         })}

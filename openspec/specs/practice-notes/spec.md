@@ -4,7 +4,7 @@
 Practice note catalog owned by each user: entry model, Markdown import, and edit isolation rules.
 ## Requirements
 ### Requirement: Practice note entry model
-The system SHALL store practice note entries owned by a single user, including at least: title, optional problem statement, approach/notes body, optional code, pitfalls list, tags, importance level, practice/review dates list (`review_dates`), created/updated timestamps, and source metadata when imported from Markdown.
+The system SHALL store practice note entries owned by a single user, including at least: title, optional problem statement, approach/notes body, optional code, pitfalls list, tags, difficulty level (1–3, higher = harder), practice/review dates list (`review_dates`), created/updated timestamps, and source metadata when imported from Markdown.
 
 #### Scenario: Create note with sparse fields
 - **WHEN** a user saves a practice note that has a title but empty problem statement and empty pitfalls
@@ -18,8 +18,12 @@ The system SHALL store practice note entries owned by a single user, including a
 - **WHEN** the owner fetches a practice note
 - **THEN** the response includes `review_dates` as an ordered list of timestamps
 
+#### Scenario: Difficulty field persisted
+- **WHEN** the owner saves a note with difficulty hard (3)
+- **THEN** subsequent reads return difficulty 3 for that note
+
 ### Requirement: Markdown import with preview
-The system SHALL accept Markdown input, use AI to extract zero or more practice note candidates from available content, and present an import preview where the user can edit, remove, or merge candidates before committing them to their catalog.
+The system SHALL accept Markdown input, use AI to extract zero or more practice note candidates from available content, and present an import preview where the user can edit, remove, or merge candidates before committing them to their catalog. When similarity matches exist for a candidate, the preview SHALL offer an optional conflict-resolve affordance; unresolved conflicted candidates MUST still be creatable on commit as new notes. Candidates already merged via resolve MUST NOT be inserted again on commit.
 
 #### Scenario: Import file with multiple problems
 - **WHEN** a user imports a Markdown document containing multiple problem sections with approaches and optional pitfalls
@@ -27,17 +31,28 @@ The system SHALL accept Markdown input, use AI to extract zero or more practice 
 
 #### Scenario: Commit after preview confirmation
 - **WHEN** the user confirms the import preview
-- **THEN** the system creates the corresponding practice notes for that user only
+- **THEN** the system creates practice notes only for candidates not already merged into an existing note, for that user only
 
 #### Scenario: Abort import
 - **WHEN** the user cancels the import preview
 - **THEN** the system does not create any new practice notes from that import
 
-### Requirement: Edit practice notes after import
-The system SHALL allow the owner to edit all practice note fields after creation, including tags and importance.
+#### Scenario: Optional conflict resolve before commit
+- **WHEN** a candidate has similarity matches and the user opens resolve, then Saves a merge into an existing note
+- **THEN** subsequent import commit does not create a duplicate row for that candidate
 
-#### Scenario: Update importance and tags
-- **WHEN** the owner sets importance to a supported level and updates tags
+### Requirement: Unique title on note create paths
+The system SHALL apply per-user unique title assignment on all create paths that insert a new practice note row (API create, import commit create-as-new, and resolve Keep as new), appending a numeric suffix when the requested title already exists for that user.
+
+#### Scenario: Import create-as-new renames on collision
+- **WHEN** import commit creates a note whose title already exists for the user
+- **THEN** the created note uses a suffixed unique title
+
+### Requirement: Edit practice notes after import
+The system SHALL allow the owner to edit all practice note fields after creation, including tags and difficulty.
+
+#### Scenario: Update difficulty and tags
+- **WHEN** the owner sets difficulty to a supported level and updates tags
 - **THEN** subsequent Path 1 filters reflect the new values
 
 ### Requirement: Admin cannot read other users' notes

@@ -1,30 +1,30 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ImportanceIcon } from "@/components/ImportanceBadge";
+import { DifficultyIcon } from "@/components/DifficultyBadge";
 import {
-  ALL_IMPORTANCE_LEVELS,
-  IMPORTANCE_LEVELS,
-  type ImportanceLevel,
-} from "@/lib/importance";
+  ALL_DIFFICULTY_LEVELS,
+  DIFFICULTY_LEVELS,
+  type DifficultyLevel,
+} from "@/lib/difficulty";
 
-type ImportanceMultiSelectProps = {
-  value: ImportanceLevel[];
-  onChange: (value: ImportanceLevel[]) => void;
+type DifficultyMultiSelectProps = {
+  value: DifficultyLevel[];
+  onChange: (value: DifficultyLevel[]) => void;
   showLegend?: boolean;
   legend?: string;
 };
 
-export function ImportanceMultiSelect({
+export function DifficultyMultiSelect({
   value,
   onChange,
   showLegend = true,
   legend,
-}: ImportanceMultiSelectProps) {
+}: DifficultyMultiSelectProps) {
   const t = useTranslations("common");
-  const selected = new Set(value.length ? value : ALL_IMPORTANCE_LEVELS);
+  const selected = new Set(value.length ? value : ALL_DIFFICULTY_LEVELS);
 
-  function toggle(level: ImportanceLevel) {
+  function toggle(level: DifficultyLevel) {
     const next = new Set(selected);
     if (next.has(level)) {
       if (next.size <= 1) return;
@@ -32,24 +32,24 @@ export function ImportanceMultiSelect({
     } else {
       next.add(level);
     }
-    onChange(ALL_IMPORTANCE_LEVELS.filter((item) => next.has(item)));
+    onChange(ALL_DIFFICULTY_LEVELS.filter((item) => next.has(item)));
   }
 
   return (
     <fieldset className="space-y-2">
       {showLegend && (
         <legend className="text-sm font-medium text-foreground/90">
-          {legend ?? t("fields.importance")}
+          {legend ?? t("fields.difficulty")}
         </legend>
       )}
       <div
         className="flex flex-wrap gap-1.5"
         role="group"
-        aria-label={legend ?? t("fields.importance")}
+        aria-label={legend ?? t("fields.difficulty")}
       >
-        {IMPORTANCE_LEVELS.map((level) => {
+        {DIFFICULTY_LEVELS.map((level) => {
           const active = selected.has(level.value);
-          const label = t(`importance.${level.labelKey}`);
+          const label = t(`difficulty.${level.labelKey}`);
           return (
             <button
               key={level.value}
@@ -62,7 +62,7 @@ export function ImportanceMultiSelect({
                   : "bg-inset text-muted ring-border hover:bg-raised"
               }`}
             >
-              <ImportanceIcon
+              <DifficultyIcon
                 value={level.value}
                 className={`size-3.5 ${active ? level.iconClass : "text-muted"}`}
               />

@@ -7,8 +7,8 @@ import { Accordion, Button, Card, Input, Label, TextArea, TextField, type Key } 
 import { AppNav } from "@/components/AppNav";
 import { CodeField } from "@/components/CodeField";
 import { FieldLabel } from "@/components/FieldLabel";
-import { ImportanceBadge } from "@/components/ImportanceBadge";
-import { ImportancePicker } from "@/components/ImportancePicker";
+import { DifficultyBadge } from "@/components/DifficultyBadge";
+import { DifficultyPicker } from "@/components/DifficultyPicker";
 import { NoteTags } from "@/components/NoteTags";
 import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
@@ -19,8 +19,26 @@ import {
   saveImportUiState,
   type ImportCandidate,
 } from "@/lib/import-store";
-import { clampImportance, getImportanceMeta, type ImportanceLevel } from "@/lib/importance";
+import { clampDifficulty, getDifficultyMeta, type DifficultyLevel } from "@/lib/difficulty";
+import { noteToDraft, saveResolveSession } from "@/lib/resolve-store";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
+
+type SimilarResponse = {
+  matches?: { note: PracticeNote; score: number }[];
+  error?: string;
+};
+
+async function fetchSimilar(draft: NoteDraft) {
+  if (!draft.title.trim()) return [] as { note: PracticeNote; score: number }[];
+  const response = await fetch("/api/bff/notes/similar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: draft.title, statement: draft.statement, top_k: 3 }),
+  });
+  if (!response.ok) return [];
+  const data = (await response.json()) as SimilarResponse;
+  return data.matches ?? [];
+}
 
 export default function ImportPage() {
   const t = useTranslations("import");
@@ -71,16 +89,36 @@ export default function ImportPage() {
       body: JSON.stringify({ markdown }),
     });
     const data = (await response.json()) as { candidates?: NoteDraft[]; error?: string };
-    setLoading(false);
-    if (!response.ok) return setError(data.error ?? t("errors.couldNotExtract"));
+    if (!response.ok) {
+      setLoading(false);
+      return setError(data.error ?? t("errors.couldNotExtract"));
+    }
     setExpandedKeys(new Set());
-    setCandidates(
-      (data.candidates ?? []).map((candidate) => ({
+    const withKeys: ImportCandidate[] = (data.candidates ?? []).map((candidate) => ({
+      ...candidate,
+      key: crypto.randomUUID(),
+      difficulty: clampDifficulty(candidate.difficulty),
+      matches: [],
+    }));
+    const withMatches = await Promise.all(
+      withKeys.map(async (candidate) => ({
         ...candidate,
-        key: crypto.randomUUID(),
-        importance: clampImportance(candidate.importance),
+        matches: await fetchSimilar(candidate),
       })),
     );
+    setCandidates(withMatches);
+    setLoading(false);
+  }
+
+  function openResolve(candidate: ImportCandidate) {
+    if (!candidate.matches?.length) return;
+    saveResolveSession({
+      origin: "import",
+      candidateKey: candidate.key,
+      incoming: noteToDraft(candidate),
+      matches: candidate.matches,
+    });
+    router.push("/import/resolve");
   }
 
   function update(key: string, field: keyof NoteDraft, value: NoteDraft[keyof NoteDraft]) {
@@ -101,13 +139,23 @@ export default function ImportPage() {
   async function commit() {
     setLoading(true);
     setError("");
+    const pending = candidates.filter((candidate) => candidate.mergedNoteId == null);
+    if (!pending.length) {
+      setLoading(false);
+      clearImportUiState();
+      setMarkdown("");
+      setCandidates([]);
+      setExpandedKeys(new Set());
+      router.push("/notes");
+      return;
+    }
     const response = await fetch("/api/bff/notes/import/commit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        candidates: candidates.map(({ key: _key, ...candidate }) => ({
+        candidates: pending.map(({ key: _key, matches: _matches, mergedNoteId: _merged, ...candidate }) => ({
           ...candidate,
-          importance: clampImportance(candidate.importance),
+          difficulty: clampDifficulty(candidate.difficulty),
         })),
       }),
     });
@@ -151,7 +199,9 @@ export default function ImportPage() {
                 <p className="mt-1 text-sm text-muted">{t("reviewHint")}</p>
               </div>
               <Button onPress={commit} isPending={loading}>
-                {t("importCount", { count: candidates.length })}
+                {t("importCount", {
+                  count: candidates.filter((c) => c.mergedNoteId == null).length,
+                })}
               </Button>
             </div>
             <Accordion
@@ -161,7 +211,7 @@ export default function ImportPage() {
               onExpandedChange={setExpandedKeys}
             >
               {candidates.map((candidate, index) => {
-                const meta = getImportanceMeta(candidate.importance);
+                const meta = getDifficultyMeta(candidate.difficulty);
                 const title = candidate.title || t("untitled");
                 return (
                   <Accordion.Item
@@ -183,8 +233,8 @@ export default function ImportPage() {
                             {title}
                           </span>
                           <span className="hidden w-[4.75rem] shrink-0 justify-end sm:flex">
-                            <ImportanceBadge
-                              value={candidate.importance}
+                            <DifficultyBadge
+                              value={candidate.difficulty}
                               showLabel
                               size="sm"
                               className="whitespace-nowrap"
@@ -192,11 +242,34 @@ export default function ImportPage() {
                           </span>
                           <Accordion.Indicator className="size-4 shrink-0 text-muted" />
                         </Accordion.Trigger>
-                        <div className="flex shrink-0 items-center pr-2 pl-1 sm:pr-3">
+                        <div className="flex shrink-0 items-center gap-1.5 pr-2 pl-1 sm:pr-3">
+                          <div className="flex w-[4.5rem] shrink-0 justify-end">
+                            {!!candidate.matches?.length && !candidate.mergedNoteId ? (
+                              <button
+                                type="button"
+                                onClick={() => openResolve(candidate)}
+                                className="w-full rounded-md border border-amber-500/70 bg-transparent px-2.5 py-1.5 text-xs font-semibold text-amber-400 transition hover:border-amber-400 hover:bg-amber-500/10 hover:text-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+                                title={t("possibleConflictHint")}
+                              >
+                                {t("possibleConflict")}
+                              </button>
+                            ) : candidate.mergedNoteId != null ? (
+                              <span className="flex w-full items-center justify-center px-1 text-xs font-medium text-emerald-400">
+                                {t("mergedBadge")}
+                              </span>
+                            ) : (
+                              <span
+                                className="invisible w-full rounded-md border px-2.5 py-1.5 text-xs font-semibold"
+                                aria-hidden
+                              >
+                                {t("possibleConflict")}
+                              </span>
+                            )}
+                          </div>
                           <button
                             type="button"
                             onClick={() => removeCandidate(candidate.key)}
-                            className="rounded-md border border-red-500/70 bg-transparent px-2.5 py-1.5 text-xs font-semibold text-red-400 transition hover:border-red-400 hover:bg-red-500/10 hover:text-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+                            className="w-[4.5rem] shrink-0 rounded-md border border-red-500/70 bg-transparent px-2.5 py-1.5 text-xs font-semibold text-red-400 transition hover:border-red-400 hover:bg-red-500/10 hover:text-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
                           >
                             {tCommon("actions.remove")}
                           </button>
@@ -211,7 +284,7 @@ export default function ImportPage() {
                           onChange={(value) => update(candidate.key, "title", value)}
                         >
                           <FieldLabel kind="title">{tCommon("fields.title")}</FieldLabel>
-                          <Input />
+                          <Input className="!text-xl font-semibold leading-snug" />
                         </TextField>
                         <TextField
                           name={`statement-${candidate.key}`}
@@ -219,7 +292,7 @@ export default function ImportPage() {
                           onChange={(value) => update(candidate.key, "statement", value)}
                         >
                           <FieldLabel kind="statement">{tCommon("fields.problemStatement")}</FieldLabel>
-                          <TextArea rows={3} />
+                          <TextArea rows={3} className="!text-base leading-relaxed" />
                         </TextField>
                         <TextField
                           name={`approach-${candidate.key}`}
@@ -261,12 +334,12 @@ export default function ImportPage() {
                         </div>
                         {!!candidate.tags.length && <NoteTags tags={candidate.tags} />}
                         <div className="space-y-2">
-                          <FieldLabel kind="importance">{tCommon("fields.importance")}</FieldLabel>
-                          <ImportancePicker
-                            name={`importance-${candidate.key}`}
-                            value={candidate.importance}
-                            onChange={(value: ImportanceLevel) =>
-                              update(candidate.key, "importance", value)
+                          <FieldLabel kind="difficulty">{tCommon("fields.difficulty")}</FieldLabel>
+                          <DifficultyPicker
+                            name={`difficulty-${candidate.key}`}
+                            value={candidate.difficulty}
+                            onChange={(value: DifficultyLevel) =>
+                              update(candidate.key, "difficulty", value)
                             }
                             showLegend={false}
                           />

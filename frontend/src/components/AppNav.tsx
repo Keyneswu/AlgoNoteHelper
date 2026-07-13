@@ -56,7 +56,7 @@ export function AppNav() {
           ) : (
             <Link
               href="/login"
-              className="rounded-md bg-accent-emphasis px-3 py-2 text-sm font-medium text-white hover:bg-accent"
+              className="rounded-md bg-accent-emphasis px-3 py-2 text-sm font-medium text-accent-foreground hover:bg-accent"
             >
               {t("login")}
             </Link>

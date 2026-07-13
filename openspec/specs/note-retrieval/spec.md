@@ -4,7 +4,7 @@
 Path 1 structured filtering and Path 2 retrieve-then-answer for practice notes owned by the current user.
 ## Requirements
 ### Requirement: Path 1 structured filter
-The system SHALL allow users to unlock practice notes by filtering on structured metadata: optional title substring match (case-insensitive), optional tags with **AND** semantics (note tags must contain every selected tag), and optional importance membership (note importance must be one of the selected levels). The system SHALL return only matching notes owned by the current user. Date/time range MUST NOT be required as a Path 1 filter axis in the product UI.
+The system SHALL allow users to unlock practice notes by filtering on structured metadata: optional title substring match (case-insensitive), optional tags with **AND** semantics (note tags must contain every selected tag), optional difficulty membership (note difficulty must be one of the selected levels), and optional practiced date range (at least one `review_dates` entry falls in the inclusive range). The system SHALL return only matching notes owned by the current user. Created/updated timestamp ranges MUST NOT be Path 1 product filter axes.
 
 #### Scenario: Filter by title substring
 - **WHEN** a user searches with title query `substring`
@@ -14,43 +14,47 @@ The system SHALL allow users to unlock practice notes by filtering on structured
 - **WHEN** a user selects tags `dp` and `array`
 - **THEN** the system returns only notes whose tags include both `dp` and `array`
 
-#### Scenario: Filter by importance membership
-- **WHEN** a user selects importance levels medium and high
-- **THEN** the system returns only notes with importance medium or high (not low)
+#### Scenario: Filter by difficulty membership
+- **WHEN** a user selects difficulty levels medium and hard
+- **THEN** the system returns only notes with difficulty medium or hard (not easy)
 
 #### Scenario: Empty tag selection
 - **WHEN** a user applies filters with no tags selected
 - **THEN** the system does not constrain results by tags
 
-#### Scenario: Combined title, tags, and importance
-- **WHEN** a user commits a title query, one or more tags, and a non-empty importance selection
+#### Scenario: Combined title, tags, difficulty, and practiced range
+- **WHEN** a user commits a title query, one or more tags, a non-empty difficulty selection, and a practiced date range
 - **THEN** the system returns only notes matching all active predicates
 
 ### Requirement: Notes list filter interaction
-The Notes catalog UI SHALL use preset tag multi-select (not free-text comma entry as the primary control), importance multi-select defaulting to all supported levels with no “Any” option, and a title search field. Title and tag changes MUST apply only when the user presses Enter or activates Search/Apply. Changing the importance selection MUST refetch using the last committed title and tag query without waiting for Search. The Notes list UI MUST NOT expose created/updated date-range filter controls.
+The Notes catalog UI SHALL use preset tag multi-select (not free-text comma entry as the primary control), difficulty multi-select defaulting to all supported levels with no “Any” option, a title search field, and an optional practiced date-range control (HeroUI DateRangePicker or equivalent). Title, tag, and practiced range changes MUST apply only when the user presses Enter or activates Search/Apply. Changing the difficulty selection MUST refetch using the last committed title, tag, and practiced-range query without waiting for Search. The Notes list UI MUST NOT expose created/updated date-range filter controls; practiced range on `review_dates` is allowed.
 
-#### Scenario: Search commits title and tags
-- **WHEN** the user edits the title field and selected tags then presses Enter or Search
-- **THEN** the list reloads with those title and tag predicates committed
+#### Scenario: Search commits title, tags, and practiced range
+- **WHEN** the user edits the title field, selected tags, and practiced date range then presses Enter or Search
+- **THEN** the list reloads with those predicates committed
 
-#### Scenario: Importance live refetch
-- **WHEN** the user toggles importance while a committed title/tag query is active
-- **THEN** the list reloads immediately with the new importance set and the same committed title/tags (not an uncommitted draft title)
+#### Scenario: Difficulty live refetch
+- **WHEN** the user toggles difficulty while a committed title/tag/practiced-range query is active
+- **THEN** the list reloads immediately with the new difficulty set and the same committed title/tags/range (not uncommitted drafts)
 
-#### Scenario: No date range controls
+#### Scenario: No created/updated date range controls
 - **WHEN** the user opens the Notes list filter bar
-- **THEN** there are no updated-after / updated-before (or equivalent) date-range inputs
+- **THEN** there are no created-after / updated-before (or equivalent created/updated) date-range inputs
+
+#### Scenario: Practiced range control present
+- **WHEN** the user opens the Notes list filter bar
+- **THEN** a practiced date-range control is available
 
 ### Requirement: Ask metadata pre-filter alignment
-Path 2 Ask pre-filtering SHALL use the same tag AND and importance membership semantics as Path 1. The Ask UI SHALL expose preset tag multi-select and importance multi-select so users can constrain the embedding candidate pool (for example, medium and high importance notes tagged `dp`) before ranking.
+Path 2 Ask pre-filtering SHALL use the same tag AND and difficulty membership semantics as Path 1. The Ask UI SHALL expose preset tag multi-select and difficulty multi-select so users can constrain the embedding candidate pool (for example, medium and hard difficulty notes tagged `dp`) before ranking.
 
-#### Scenario: Ask with tags and importance
-- **WHEN** a user asks a question with tags `dp` selected and importance medium and high selected
-- **THEN** retrieval considers only that user's embedded notes that contain tag `dp` and have medium or high importance, then ranks within that set
+#### Scenario: Ask with tags and difficulty
+- **WHEN** a user asks a question with tags `dp` selected and difficulty medium and hard selected
+- **THEN** retrieval considers only that user's embedded notes that contain tag `dp` and have medium or hard difficulty, then ranks within that set
 
 #### Scenario: Ask with no tags
-- **WHEN** a user asks a question with no tags selected and all importance levels selected
-- **THEN** retrieval is not narrowed by tags and may include any importance level for that user (subject to embedding presence and top_k)
+- **WHEN** a user asks a question with no tags selected and all difficulty levels selected
+- **THEN** retrieval is not narrowed by tags and may include any difficulty level for that user (subject to embedding presence and top_k)
 
 ### Requirement: Path 2 retrieve then list then answer
 The system SHALL support natural-language questions by (1) retrieving relevant practice notes for the current user, (2) listing those notes to the user, and (3) answering or summarizing using only the listed notes.
@@ -68,8 +72,12 @@ The system SHALL support natural-language questions by (1) retrieving relevant p
 - **THEN** the answer MUST be based on the notes included in the preceding list and MUST NOT present external problem knowledge as if it were the user's notes
 
 ### Requirement: Entry-level embeddings
-The system SHALL embed each practice note as a single retrieval unit using title, problem statement, approach, and pitfalls text, and SHALL exclude primary code bodies from the default embedding document unless explicitly configured later.
+The system SHALL embed each practice note as a single retrieval unit using title, problem statement, approach, pitfalls, and code (code MAY be truncated for embedding length limits). Ask answer grounding MUST include the full code body when present so the model can answer code-level questions about retrieved notes.
 
 #### Scenario: Embed after note save
 - **WHEN** a user creates or updates embeddable fields on a note and embedding credentials are configured
 - **THEN** the system updates that note's vector so Path 2 can retrieve it
+
+#### Scenario: Ask grounding includes code
+- **WHEN** Path 2 retrieves notes that contain code and generates an answer
+- **THEN** the chat context includes those notes' code fields, not only title/statement/approach/pitfalls

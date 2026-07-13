@@ -8,7 +8,7 @@
     "logout": "退出",
     "login": "登录",
     "language": "语言",
-    "localeEn": "English",
+    "localeEn": "EN",
     "localeZh": "中文"
   },
   "common": {
@@ -29,20 +29,20 @@
       "code": "代码",
       "tags": "标签",
       "pitfalls": "易错点",
-      "importance": "重要度"
+      "difficulty": "难度"
     },
     "placeholders": {
       "titleExample": "两数之和",
       "pitfallsOnePerLine": "每行一条",
       "tagsCommaSeparated": "array, dp"
     },
-    "importance": {
-      "high": "高",
+    "difficulty": {
+      "hard": "难",
       "medium": "中",
-      "low": "低",
-      "highPriority": "高优先级",
-      "mediumPriority": "中优先级",
-      "lowPriority": "低优先级",
+      "easy": "易",
+      "hardDesc": "困难",
+      "mediumDesc": "中等",
+      "easyDesc": "简单",
       "minOrHigher": "{level} 及以上",
       "minFilterSuffix": "{level}+",
       "any": "不限"
@@ -98,8 +98,15 @@
         "title": "题名",
         "titlePlaceholder": "按题目名称搜索…",
         "tags": "标签",
-        "importance": "重要度",
-        "search": "搜索"
+        "difficulty": "难度",
+        "practicedRange": "练习日期",
+        "sort": "排序",
+        "sortLearning": "默认",
+        "sortDifficultyAsc": "Easy → Hard",
+        "sortDifficultyDesc": "Hard → Easy",
+        "sortPracticed": "最近练习",
+        "search": "搜索",
+        "pageSummary": "第 {from}–{to} 条，共 {total} 条"
       },
       "empty": "没有符合条件的笔记。创建一条，开始你的归档吧。",
       "errors": {
@@ -117,9 +124,16 @@
       "headingFallback": "编辑笔记",
       "loading": "正在加载笔记…",
       "rewriteWithAi": "AI 改写",
-      "aiRewriteHint": "AI 改写只会更新编辑器内容，确认后请手动保存。",
+      "generateApproach": "AI 生成思路",
+      "reverse": "还原",
+      "aiAssistHint": "AI 只会更新编辑器内容。生成思路需要完整题干；可用「还原」恢复到上次保存的文本，确认后请手动保存。",
+      "aiRewriteHint": "AI 改写只会更新编辑器内容；可用「还原」恢复到上次保存的文本，确认后请手动保存。",
       "save": "保存",
       "saveAndReturn": "保存并返回",
+      "delete": "删除笔记",
+      "deleteHeading": "删除这篇笔记？",
+      "deleteConfirm": "将永久删除「{title}」，此操作不可撤销。",
+      "deleteCancel": "取消",
       "practiceHistory": {
         "heading": "练习记录",
         "empty": "还没有练习日期。",
@@ -130,7 +144,11 @@
       "errors": {
         "couldNotLoad": "无法加载笔记",
         "couldNotRewrite": "无法改写该字段",
-        "couldNotSave": "无法保存笔记"
+        "couldNotGenerateApproach": "无法生成解题思路",
+        "statementRequiredForApproach": "请先填写题干，再生成解题思路。",
+        "statementIncompleteForApproach": "题干看起来还不完整。请补充输入、目标、约束等信息后再生成。",
+        "couldNotSave": "无法保存笔记",
+        "couldNotDelete": "无法删除笔记"
       }
     }
   },
@@ -144,9 +162,32 @@
     "reviewHint": "默认折叠 — 展开题目即可编辑字段。",
     "importCount": "导入 {count} 条笔记",
     "untitled": "未命名",
+    "possibleConflict": "冲突",
+    "possibleConflictHint": "发现相似笔记 — 打开后可合并，或仍作为新题保存",
+    "mergedBadge": "已合并",
     "errors": {
       "couldNotExtract": "无法提取笔记",
       "couldNotImport": "无法导入笔记"
+    }
+  },
+  "resolve": {
+    "eyebrow": "疑似重复",
+    "heading": "解决冲突",
+    "hint": "左侧可编辑新内容（「仍要新建」会用这里的版本）。已有笔记的空字段会用新内容预填。还原可恢复进入本页时的原始值。",
+    "back": "返回",
+    "keepAsNew": "仍要新建",
+    "saveMerge": "保存到已有笔记",
+    "matchesHeading": "可能匹配",
+    "score": "相似度 {score}",
+    "incomingHeading": "新内容（可编辑）",
+    "existingHeading": "已有 #{id}（可编辑）",
+    "reverse": "还原",
+    "aiMerge": "AI 合并",
+    "empty": "没有冲突会话，请返回后重试。",
+    "errors": {
+      "couldNotMerge": "无法合并到已有笔记",
+      "couldNotCreate": "无法创建笔记",
+      "couldNotAiMerge": "无法 AI 合并该字段"
     }
   },
   "ask": {
@@ -155,7 +196,7 @@
     "question": "问题",
     "questionPlaceholder": "什么时候该用单调栈？",
     "optionalTags": "标签",
-    "importance": "重要度",
+    "difficulty": "难度",
     "submit": "提问",
     "answerHeading": "回答",
     "thinking": "思考中…",

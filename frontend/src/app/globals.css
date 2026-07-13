@@ -6,78 +6,141 @@
 @source "../../node_modules/@streamdown/code/dist/*.js";
 
 /*
-  GitHub Primer–inspired fixed dark UI.
-  canvas #0d1117 → surface #161b22 → raised #21262d → inset #010409
-  border #30363d · fg #e6edf3 · muted #9198a1 · accent #4493f8
-*/
+ * HeroUI Theme Customization
+ * Add this to your global.css after importing @heroui/styles
+ * Only includes variables users need to customize
+ * @see https://heroui.com/docs/react/getting-started/theming
+ */
 
-html.dark,
-html[data-theme="dark"] {
+:root,
+.light,
+.default,
+[data-theme="light"],
+[data-theme="default"] {
+  /* Theme Colors (Light Mode) */
+  --accent: oklch(76.97% 0.2124 148.67);
+  --accent-foreground: oklch(15% 0.0300 148.67);
+  --background: oklch(97.02% 0.0015 148.67);
+  --border: oklch(90.00% 0.0015 148.67);
+  --danger: oklch(65.32% 0.2335 13.12);
+  --danger-foreground: oklch(99.11% 0 0);
+  --default: oklch(94.00% 0.0015 148.67);
+  --default-foreground: oklch(21.03% 0.0059 148.67);
+  --field-background: oklch(100.00% 0.0008 148.67);
+  --field-border: transparent;
+  --field-foreground: oklch(21.03% 0.0015 148.67);
+  --field-placeholder: oklch(55.17% 0.0030 148.67);
+  --focus: oklch(76.97% 0.2124 148.67);
+  --foreground: oklch(21.03% 0.0015 148.67);
+  --muted: oklch(55.17% 0.0030 148.67);
+  --overlay: oklch(100.00% 0.0004 148.67);
+  --overlay-foreground: oklch(21.03% 0.0015 148.67);
+  --scrollbar: oklch(87.10% 0.0015 148.67);
+  --segment: oklch(100.00% 0.0015 148.67);
+  --segment-foreground: oklch(21.03% 0.0015 148.67);
+  --separator: oklch(92.00% 0.0015 148.67);
+  --success: oklch(73.29% 0.1941 138.19);
+  --success-foreground: oklch(21.03% 0.0059 138.19);
+  --surface: oklch(100.00% 0.0008 148.67);
+  --surface-foreground: oklch(21.03% 0.0015 148.67);
+  --surface-secondary: oklch(95.24% 0.0012 148.67);
+  --surface-secondary-foreground: oklch(21.03% 0.0015 148.67);
+  --surface-tertiary: oklch(93.73% 0.0012 148.67);
+  --surface-tertiary-foreground: oklch(21.03% 0.0015 148.67);
+  --warning: oklch(78.19% 0.1590 59.71);
+  --warning-foreground: oklch(21.03% 0.0059 59.71);
+
+  /* Border Radius */
+  --radius: 0.5rem;
+  --field-radius: 0.75rem;
+
+  /* Font Family */
+  --font-sans: var(--font-inter);
+
+  /* App aliases used by Tailwind utility classes */
+  --canvas: var(--background);
+  --raised: var(--surface-secondary);
+  --inset: var(--surface-tertiary);
+  --accent-emphasis: oklch(68% 0.19 148.67);
+  --link: var(--accent);
+  --backdrop: rgba(15, 23, 15, 0.45);
+}
+
+.dark,
+[data-theme="dark"] {
   color-scheme: dark;
+  /* Theme Colors (Dark Mode) */
+  --accent: oklch(76.97% 0.2124 148.67);
+  --accent-foreground: oklch(15% 0.0300 148.67);
+  --background: oklch(12.00% 0.0015 148.67);
+  --border: oklch(28.00% 0.0015 148.67);
+  --danger: oklch(59.40% 0.1973 12.01);
+  --danger-foreground: oklch(99.11% 0 0);
+  --default: oklch(27.40% 0.0015 148.67);
+  --default-foreground: oklch(99.11% 0 0);
+  --field-background: oklch(21.03% 0.0030 148.67);
+  --field-border: transparent;
+  --field-foreground: oklch(99.11% 0.0015 148.67);
+  --field-placeholder: oklch(70.50% 0.0030 148.67);
+  --focus: oklch(76.97% 0.2124 148.67);
+  --foreground: oklch(99.11% 0.0015 148.67);
+  --muted: oklch(70.50% 0.0030 148.67);
+  --overlay: oklch(21.03% 0.0030 148.67);
+  --overlay-foreground: oklch(99.11% 0.0015 148.67);
+  --scrollbar: oklch(70.50% 0.0015 148.67);
+  --segment: oklch(39.64% 0.0015 148.67);
+  --segment-foreground: oklch(99.11% 0.0015 148.67);
+  --separator: oklch(25.00% 0.0015 148.67);
+  --success: oklch(73.29% 0.1941 138.19);
+  --success-foreground: oklch(21.03% 0.0059 138.19);
+  --surface: oklch(21.03% 0.0030 148.67);
+  --surface-foreground: oklch(99.11% 0.0015 148.67);
+  --surface-secondary: oklch(25.70% 0.0023 148.67);
+  --surface-secondary-foreground: oklch(99.11% 0.0015 148.67);
+  --surface-tertiary: oklch(27.21% 0.0023 148.67);
+  --surface-tertiary-foreground: oklch(99.11% 0.0015 148.67);
+  --warning: oklch(82.03% 0.1392 63.72);
+  --warning-foreground: oklch(21.03% 0.0059 63.72);
 
-  --canvas: #0d1117;
-  --surface: #161b22;
-  --raised: #21262d;
-  --inset: #010409;
-  --border: #30363d;
-  --foreground: #e6edf3;
-  --muted: #9198a1;
-  --accent: #4493f8;
-  --accent-emphasis: #1f6feb;
-  --success: #3fb950;
-  --danger: #f85149;
-  --warning: #d29922;
-
-  /* HeroUI semantics aligned to the same ladder */
-  --background: #0d1117;
-  --surface-foreground: #e6edf3;
-  --surface-secondary: #21262d;
-  --surface-secondary-foreground: #e6edf3;
-  --surface-tertiary: #21262d;
-  --overlay: #161b22;
-  --overlay-foreground: #e6edf3;
-  --default: #21262d;
-  --default-foreground: #e6edf3;
-  --accent-foreground: #ffffff;
-  --field-background: #0d1117;
-  --field-foreground: #e6edf3;
-  --field-placeholder: #9198a1;
-  --field-border: #30363d;
-  --separator: #30363d;
-  --focus: #4493f8;
-  --link: #4493f8;
-  --segment: #21262d;
-  --segment-foreground: #e6edf3;
-  --backdrop: rgba(1, 4, 9, 0.72);
+  /* App aliases */
+  --canvas: var(--background);
+  --raised: var(--surface-secondary);
+  --inset: oklch(9.5% 0.0015 148.67);
+  --accent-emphasis: oklch(68% 0.19 148.67);
+  --link: var(--accent);
+  --backdrop: rgba(0, 0, 0, 0.6);
   --surface-shadow: 0 0 0 0 transparent;
-  --overlay-shadow: 0 8px 24px rgba(1, 4, 9, 0.5);
+  --overlay-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   --field-shadow: 0 0 0 0 transparent;
 }
 
 @theme inline {
-  --color-background: #0d1117;
-  --color-foreground: #e6edf3;
-  --color-canvas: #0d1117;
-  --color-surface: #161b22;
-  --color-raised: #21262d;
-  --color-inset: #010409;
-  --color-border: #30363d;
-  --color-muted: #9198a1;
-  --color-accent: #4493f8;
-  --color-accent-emphasis: #1f6feb;
-  --font-sans: var(--font-geist-sans);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-inset: var(--inset);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-emphasis: var(--accent-emphasis);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
+  --radius-DEFAULT: var(--radius);
 }
 
 html.dark,
-html.dark body {
-  background-color: #0d1117 !important;
-  color: #e6edf3;
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-}
-
-html.dark * {
-  border-color: #30363d;
+html.dark body,
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 .accordion__trigger.import-candidate-trigger {

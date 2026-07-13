@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,8 +11,8 @@ class PracticeNoteBase(BaseModel):
     code: str = ""
     pitfalls: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
-    # 1=low (green), 2=medium (yellow), 3=high (red)
-    importance: int = Field(default=2, ge=1, le=3)
+    # 1=easy (green), 2=medium (yellow), 3=hard (red)
+    difficulty: int = Field(default=2, ge=1, le=3)
     review_dates: list[datetime] = Field(default_factory=list)
     source_meta: dict[str, Any] | None = None
 
@@ -28,7 +28,7 @@ class PracticeNoteUpdate(BaseModel):
     code: str | None = None
     pitfalls: list[str] | None = None
     tags: list[str] | None = None
-    importance: int | None = Field(default=None, ge=1, le=3)
+    difficulty: int | None = Field(default=None, ge=1, le=3)
     review_dates: list[datetime] | None = None
     source_meta: dict[str, Any] | None = None
 
@@ -43,16 +43,11 @@ class PracticeNoteOut(PracticeNoteBase):
     model_config = {"from_attributes": True}
 
 
-class NoteFilterQuery(BaseModel):
-    q: str | None = None
-    tags: list[str] | None = None
-    importance: list[int] | None = None
-    importance_min: int | None = Field(default=None, ge=1, le=3)
-    importance_max: int | None = Field(default=None, ge=1, le=3)
-    created_from: datetime | None = None
-    created_to: datetime | None = None
-    updated_from: datetime | None = None
-    updated_to: datetime | None = None
+class PracticeNoteListOut(BaseModel):
+    items: list[PracticeNoteOut]
+    total: int
+    page: int
+    page_size: int
 
 
 class ImportExtractRequest(BaseModel):
@@ -118,14 +113,61 @@ class RewriteResponse(BaseModel):
     rewritten: str
 
 
+class GenerateApproachRequest(BaseModel):
+    title: str = ""
+    statement: str = ""
+    tags: list[str] = Field(default_factory=list)
+    code: str = ""
+
+
 class AskRequest(BaseModel):
     question: str = Field(min_length=1)
     tags: list[str] | None = None
-    importance: list[int] | None = None
-    importance_min: int | None = Field(default=None, ge=1, le=3)
+    difficulty: list[int] | None = None
     top_k: int = Field(default=8, ge=1, le=20)
 
 
 class AskResponse(BaseModel):
     notes: list[PracticeNoteOut]
     answer: str | None
+
+
+class SimilarRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=512)
+    statement: str = ""
+    top_k: int = Field(default=3, ge=1, le=10)
+
+
+class SimilarMatch(BaseModel):
+    note: PracticeNoteOut
+    score: float
+
+
+class SimilarResponse(BaseModel):
+    matches: list[SimilarMatch]
+
+
+class MergeNoteRequest(BaseModel):
+    """Field values from the resolve canvas to write onto an existing note."""
+
+    title: str = Field(min_length=1, max_length=512)
+    statement: str = ""
+    approach: str = ""
+    code: str = ""
+    pitfalls: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    difficulty: int = Field(default=2, ge=1, le=3)
+
+
+class FieldMergeRequest(BaseModel):
+    field: str = Field(min_length=1, max_length=64)
+    existing: str = ""
+    incoming: str = ""
+
+
+class FieldMergeResponse(BaseModel):
+    merged: str
+
+
+SortMode = Literal["learning", "difficulty", "practiced"]
+SortOrder = Literal["asc", "desc"]

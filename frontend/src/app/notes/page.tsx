@@ -1,52 +1,245 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Card, Input, Label, TextField } from "@heroui/react";
+import { CalendarDate, parseDate } from "@internationalized/date";
+import {
+  Button,
+  Card,
+  DateField,
+  DateRangePicker,
+  Input,
+  Label,
+  ListBox,
+  Pagination,
+  RangeCalendar,
+  Select,
+  TextField,
+} from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
-import { ImportanceMultiSelect } from "@/components/ImportanceMultiSelect";
+import { DifficultyMultiSelect } from "@/components/DifficultyMultiSelect";
 import { NoteCard } from "@/components/NoteCard";
 import { TagPicker } from "@/components/TagPicker";
 import { authClient } from "@/lib/auth-client";
-import { ALL_IMPORTANCE_LEVELS, type ImportanceLevel } from "@/lib/importance";
+import { ALL_DIFFICULTY_LEVELS, type DifficultyLevel } from "@/lib/difficulty";
 import type { PracticeNote } from "@/lib/types";
+
+const PAGE_SIZE = 8;
+
+type SortMode = "learning" | "difficulty" | "practiced";
+type SortOrder = "asc" | "desc";
+
+type DateRangeValue = {
+  start: CalendarDate;
+  end: CalendarDate;
+} | null;
 
 type CommittedQuery = {
   title: string;
   tags: string[];
+  practicedFrom: string | null; // YYYY-MM-DD
+  practicedTo: string | null;
 };
 
-function buildNotesQuery(committed: CommittedQuery, importance: ImportanceLevel[]) {
+type NotesListResponse = {
+  items: PracticeNote[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+function calendarToYmd(date: CalendarDate): string {
+  const month = String(date.month).padStart(2, "0");
+  const day = String(date.day).padStart(2, "0");
+  return `${date.year}-${month}-${day}`;
+}
+
+function ymdToCalendar(ymd: string): CalendarDate | null {
+  try {
+    return parseDate(ymd);
+  } catch {
+    return null;
+  }
+}
+
+/** Local calendar day → UTC ISO bounds for API. */
+function localDayStartIso(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y!, m! - 1, d!, 0, 0, 0, 0).toISOString();
+}
+
+function localDayEndIso(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y!, m! - 1, d!, 23, 59, 59, 999).toISOString();
+}
+
+function parseDifficultyParam(values: string[]): DifficultyLevel[] {
+  const levels = values
+    .map((value) => Number(value))
+    .filter((value): value is DifficultyLevel => value === 1 || value === 2 || value === 3);
+  return levels.length
+    ? ALL_DIFFICULTY_LEVELS.filter((level) => levels.includes(level))
+    : [...ALL_DIFFICULTY_LEVELS];
+}
+
+function parseSort(raw: string | null): SortMode {
+  if (raw === "difficulty" || raw === "practiced") return raw;
+  return "learning";
+}
+
+function parseOrder(raw: string | null): SortOrder {
+  return raw === "desc" ? "desc" : "asc";
+}
+
+function rangeFromCommitted(committed: CommittedQuery): DateRangeValue {
+  if (!committed.practicedFrom || !committed.practicedTo) return null;
+  const start = ymdToCalendar(committed.practicedFrom);
+  const end = ymdToCalendar(committed.practicedTo);
+  if (!start || !end) return null;
+  return { start, end };
+}
+
+function buildApiQuery(
+  committed: CommittedQuery,
+  difficulty: DifficultyLevel[],
+  sort: SortMode,
+  order: SortOrder,
+  page: number,
+) {
   const query = new URLSearchParams();
   const title = committed.title.trim();
   if (title) query.set("q", title);
   committed.tags.forEach((tag) => query.append("tags", tag));
-  importance.forEach((level) => query.append("importance", String(level)));
+  difficulty.forEach((level) => query.append("difficulty", String(level)));
+  if (committed.practicedFrom) query.set("practiced_from", localDayStartIso(committed.practicedFrom));
+  if (committed.practicedTo) query.set("practiced_to", localDayEndIso(committed.practicedTo));
+  query.set("sort", sort);
+  if (sort === "difficulty") query.set("order", order);
+  query.set("page", String(page));
   return query;
 }
 
-export default function NotesPage() {
+function buildUrlQuery(
+  committed: CommittedQuery,
+  difficulty: DifficultyLevel[],
+  sort: SortMode,
+  order: SortOrder,
+  page: number,
+) {
+  const query = new URLSearchParams();
+  if (committed.title.trim()) query.set("q", committed.title.trim());
+  committed.tags.forEach((tag) => query.append("tags", tag));
+  const allSelected =
+    difficulty.length === ALL_DIFFICULTY_LEVELS.length &&
+    ALL_DIFFICULTY_LEVELS.every((level) => difficulty.includes(level));
+  if (!allSelected) {
+    difficulty.forEach((level) => query.append("difficulty", String(level)));
+  }
+  if (committed.practicedFrom) query.set("practiced_from", committed.practicedFrom);
+  if (committed.practicedTo) query.set("practiced_to", committed.practicedTo);
+  if (sort !== "learning") query.set("sort", sort);
+  if (sort === "difficulty" && order !== "asc") query.set("order", order);
+  if (sort === "difficulty" && order === "asc") query.set("order", "asc");
+  if (page > 1) query.set("page", String(page));
+  return query;
+}
+
+function getPageNumbers(page: number, totalPages: number): (number | "ellipsis")[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const pages: (number | "ellipsis")[] = [1];
+  if (page > 3) pages.push("ellipsis");
+  const start = Math.max(2, page - 1);
+  const end = Math.min(totalPages - 1, page + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (page < totalPages - 2) pages.push("ellipsis");
+  pages.push(totalPages);
+  return pages;
+}
+
+function NotesPageContent() {
   const t = useTranslations("notes.list");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, isPending } = authClient.useSession();
+
+  const initial = useMemo(() => {
+    const title = searchParams.get("q")?.trim() ?? "";
+    const tags = searchParams.getAll("tags").map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+    const practicedFrom = searchParams.get("practiced_from");
+    const practicedTo = searchParams.get("practiced_to");
+    const difficulty = parseDifficultyParam(searchParams.getAll("difficulty"));
+    const sort = parseSort(searchParams.get("sort"));
+    const order = parseOrder(searchParams.get("order"));
+    const pageRaw = Number(searchParams.get("page") || "1");
+    const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
+    const committed: CommittedQuery = {
+      title,
+      tags,
+      practicedFrom: practicedFrom && ymdToCalendar(practicedFrom) ? practicedFrom : null,
+      practicedTo: practicedTo && ymdToCalendar(practicedTo) ? practicedTo : null,
+    };
+    return { committed, difficulty, sort, order, page };
+    // Only hydrate from URL on mount / when searchParams identity changes from navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const [notes, setNotes] = useState<PracticeNote[]>([]);
-  const [draftTitle, setDraftTitle] = useState("");
-  const [draftTags, setDraftTags] = useState<string[]>([]);
-  const [committed, setCommitted] = useState<CommittedQuery>({ title: "", tags: [] });
-  const [importance, setImportance] = useState<ImportanceLevel[]>([...ALL_IMPORTANCE_LEVELS]);
+  const [total, setTotal] = useState(0);
+  const [draftTitle, setDraftTitle] = useState(initial.committed.title);
+  const [draftTags, setDraftTags] = useState(initial.committed.tags);
+  const [draftRange, setDraftRange] = useState<DateRangeValue>(rangeFromCommitted(initial.committed));
+  const [committed, setCommitted] = useState(initial.committed);
+  const [difficulty, setDifficulty] = useState(initial.difficulty);
+  const [sort, setSort] = useState(initial.sort);
+  const [order, setOrder] = useState(initial.order);
+  const [page, setPage] = useState(initial.page);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const skipUrlWriteRef = useRef(true);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
   }, [isPending, router, session]);
 
-  async function loadNotes(nextCommitted: CommittedQuery, nextImportance: ImportanceLevel[]) {
+  // Keep drafts/committed in sync when URL changes (back/forward).
+  useEffect(() => {
+    setDraftTitle(initial.committed.title);
+    setDraftTags(initial.committed.tags);
+    setDraftRange(rangeFromCommitted(initial.committed));
+    setCommitted(initial.committed);
+    setDifficulty(initial.difficulty);
+    setSort(initial.sort);
+    setOrder(initial.order);
+    setPage(initial.page);
+    skipUrlWriteRef.current = true;
+  }, [initial]);
+
+  function replaceBrowseUrl(
+    nextCommitted: CommittedQuery,
+    nextDifficulty: DifficultyLevel[],
+    nextSort: SortMode,
+    nextOrder: SortOrder,
+    nextPage: number,
+  ) {
+    const query = buildUrlQuery(nextCommitted, nextDifficulty, nextSort, nextOrder, nextPage);
+    const qs = query.toString();
+    router.replace(qs ? `/notes?${qs}` : "/notes");
+  }
+
+  async function loadNotes(
+    nextCommitted: CommittedQuery,
+    nextDifficulty: DifficultyLevel[],
+    nextSort: SortMode,
+    nextOrder: SortOrder,
+    nextPage: number,
+  ) {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -54,18 +247,20 @@ export default function NotesPage() {
 
     setLoading(true);
     setError("");
-    const query = buildNotesQuery(nextCommitted, nextImportance);
+    const query = buildApiQuery(nextCommitted, nextDifficulty, nextSort, nextOrder, nextPage);
     try {
       const response = await fetch(`/api/bff/notes?${query.toString()}`, {
         signal: controller.signal,
       });
-      const data = (await response.json()) as PracticeNote[] | { error?: string };
+      const data = (await response.json()) as NotesListResponse | { error?: string };
       if (requestId !== requestIdRef.current) return;
       if (!response.ok) {
         setError((data as { error?: string }).error ?? t("errors.couldNotLoad"));
         return;
       }
-      setNotes(data as PracticeNote[]);
+      const list = data as NotesListResponse;
+      setNotes(list.items ?? []);
+      setTotal(list.total ?? 0);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       if (requestId !== requestIdRef.current) return;
@@ -77,19 +272,60 @@ export default function NotesPage() {
 
   useEffect(() => {
     if (!session) return;
-    void loadNotes(committed, importance);
-    // Initial + importance live updates; title/tags only via commitSearch.
+    void loadNotes(committed, difficulty, sort, order, page);
+    if (skipUrlWriteRef.current) {
+      skipUrlWriteRef.current = false;
+    } else {
+      replaceBrowseUrl(committed, difficulty, sort, order, page);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, importance]);
+  }, [session, committed, difficulty, sort, order, page]);
 
   function commitSearch() {
-    const next = {
+    const next: CommittedQuery = {
       title: draftTitle.trim(),
       tags: draftTags,
+      practicedFrom: draftRange ? calendarToYmd(draftRange.start) : null,
+      practicedTo: draftRange ? calendarToYmd(draftRange.end) : null,
     };
+    setPage(1);
     setCommitted(next);
-    void loadNotes(next, importance);
   }
+
+  function onSortChange(value: string) {
+    setPage(1);
+    if (value === "difficulty_asc") {
+      setSort("difficulty");
+      setOrder("asc");
+    } else if (value === "difficulty_desc") {
+      setSort("difficulty");
+      setOrder("desc");
+    } else if (value === "practiced") {
+      setSort("practiced");
+      setOrder("asc");
+    } else {
+      setSort("learning");
+      setOrder("asc");
+    }
+  }
+
+  function onDifficultyChange(next: DifficultyLevel[]) {
+    setPage(1);
+    setDifficulty(next);
+  }
+
+  const sortSelectValue =
+    sort === "difficulty"
+      ? order === "desc"
+        ? "difficulty_desc"
+        : "difficulty_asc"
+      : sort === "practiced"
+        ? "practiced"
+        : "learning";
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const pageTo = Math.min(page * PAGE_SIZE, total);
 
   if (isPending || !session) return null;
   return (
@@ -103,7 +339,7 @@ export default function NotesPage() {
           </div>
           <Link
             href="/notes/new"
-            className="rounded-md bg-accent-emphasis px-3 py-2 text-sm font-medium text-white hover:bg-accent"
+            className="rounded-md bg-accent-emphasis px-3 py-2 text-sm font-medium text-accent-foreground hover:bg-accent"
           >
             {t("newNote")}
           </Link>
@@ -127,11 +363,93 @@ export default function NotesPage() {
                 onChange={setDraftTags}
                 label={t("filters.tags")}
               />
-              <ImportanceMultiSelect
-                value={importance}
-                onChange={setImportance}
-                legend={t("filters.importance")}
+              <DateRangePicker
+                className="w-full"
+                value={draftRange}
+                onChange={(value) => {
+                  setDraftRange(
+                    value?.start && value?.end
+                      ? { start: value.start as CalendarDate, end: value.end as CalendarDate }
+                      : null,
+                  );
+                }}
+              >
+                <Label>{t("filters.practicedRange")}</Label>
+                <DateField.Group fullWidth>
+                  <DateField.Input slot="start">
+                    {(segment) => <DateField.Segment segment={segment} />}
+                  </DateField.Input>
+                  <DateRangePicker.RangeSeparator />
+                  <DateField.Input slot="end">
+                    {(segment) => <DateField.Segment segment={segment} />}
+                  </DateField.Input>
+                  <DateField.Suffix>
+                    <DateRangePicker.Trigger>
+                      <DateRangePicker.TriggerIndicator />
+                    </DateRangePicker.Trigger>
+                  </DateField.Suffix>
+                </DateField.Group>
+                <DateRangePicker.Popover>
+                  <RangeCalendar aria-label={t("filters.practicedRange")}>
+                    <RangeCalendar.Header>
+                      <RangeCalendar.YearPickerTrigger>
+                        <RangeCalendar.YearPickerTriggerHeading />
+                        <RangeCalendar.YearPickerTriggerIndicator />
+                      </RangeCalendar.YearPickerTrigger>
+                      <RangeCalendar.NavButton slot="previous" />
+                      <RangeCalendar.NavButton slot="next" />
+                    </RangeCalendar.Header>
+                    <RangeCalendar.Grid>
+                      <RangeCalendar.GridHeader>
+                        {(day) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
+                      </RangeCalendar.GridHeader>
+                      <RangeCalendar.GridBody>
+                        {(date) => <RangeCalendar.Cell date={date} />}
+                      </RangeCalendar.GridBody>
+                    </RangeCalendar.Grid>
+                    <RangeCalendar.YearPickerGrid>
+                      <RangeCalendar.YearPickerGridBody>
+                        {({ year }) => <RangeCalendar.YearPickerCell year={year} />}
+                      </RangeCalendar.YearPickerGridBody>
+                    </RangeCalendar.YearPickerGrid>
+                  </RangeCalendar>
+                </DateRangePicker.Popover>
+              </DateRangePicker>
+              <DifficultyMultiSelect
+                value={difficulty}
+                onChange={onDifficultyChange}
+                legend={t("filters.difficulty")}
               />
+              <Select
+                className="w-full"
+                value={sortSelectValue}
+                onChange={(value) => {
+                  if (typeof value === "string") onSortChange(value);
+                }}
+              >
+                <Label>{t("filters.sort")}</Label>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    {(
+                      [
+                        ["learning", "sortLearning"],
+                        ["difficulty_asc", "sortDifficultyAsc"],
+                        ["difficulty_desc", "sortDifficultyDesc"],
+                        ["practiced", "sortPracticed"],
+                      ] as const
+                    ).map(([id, labelKey]) => (
+                      <ListBox.Item key={id} id={id} textValue={t(`filters.${labelKey}`)}>
+                        {t(`filters.${labelKey}`)}
+                        <ListBox.ItemIndicator />
+                      </ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
+              </Select>
               <div className="flex items-end">
                 <Button type="submit" isPending={loading}>
                   {t("filters.search")}
@@ -151,7 +469,55 @@ export default function NotesPage() {
             </p>
           )}
         </div>
+        {total > 0 && (
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+            <Pagination.Summary className="text-sm text-muted">
+              {t("filters.pageSummary", { from: pageFrom, to: pageTo, total })}
+            </Pagination.Summary>
+            <Pagination className="justify-center">
+              <Pagination.Content>
+                <Pagination.Item>
+                  <Pagination.Previous
+                    isDisabled={page <= 1}
+                    onPress={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    <Pagination.PreviousIcon />
+                  </Pagination.Previous>
+                </Pagination.Item>
+                {getPageNumbers(page, totalPages).map((item, index) =>
+                  item === "ellipsis" ? (
+                    <Pagination.Item key={`e-${index}`}>
+                      <Pagination.Ellipsis />
+                    </Pagination.Item>
+                  ) : (
+                    <Pagination.Item key={item}>
+                      <Pagination.Link isActive={item === page} onPress={() => setPage(item)}>
+                        {item}
+                      </Pagination.Link>
+                    </Pagination.Item>
+                  ),
+                )}
+                <Pagination.Item>
+                  <Pagination.Next
+                    isDisabled={page >= totalPages}
+                    onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    <Pagination.NextIcon />
+                  </Pagination.Next>
+                </Pagination.Item>
+              </Pagination.Content>
+            </Pagination>
+          </div>
+        )}
       </main>
     </div>
+  );
+}
+
+export default function NotesPage() {
+  return (
+    <Suspense fallback={null}>
+      <NotesPageContent />
+    </Suspense>
   );
 }

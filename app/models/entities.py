@@ -24,6 +24,7 @@ EMBEDDING_DIM = 1024
 
 class PracticeNote(Base):
     __tablename__ = "practice_notes"
+    __table_args__ = (UniqueConstraint("user_id", "title", name="uq_practice_notes_user_title"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(128), index=True, nullable=False)
@@ -33,7 +34,7 @@ class PracticeNote(Base):
     code: Mapped[str] = mapped_column(Text, default="", nullable=False)
     pitfalls: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
     tags: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
-    importance: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    difficulty: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
     review_dates: Mapped[list[datetime]] = mapped_column(
         ARRAY(DateTime(timezone=True)), default=list, nullable=False
     )

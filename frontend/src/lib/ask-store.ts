@@ -1,12 +1,12 @@
 import type { PracticeNote } from "@/lib/types";
-import { ALL_IMPORTANCE_LEVELS, type ImportanceLevel } from "@/lib/importance";
+import { ALL_DIFFICULTY_LEVELS, type DifficultyLevel } from "@/lib/difficulty";
 
 export type AskResult = { notes: PracticeNote[]; answer: string | null };
 
 export type AskUiState = {
   question: string;
   tags: string[];
-  importance: ImportanceLevel[];
+  difficulty: DifficultyLevel[];
   result: AskResult | null;
   notesExpanded: boolean;
   error: string;
@@ -17,7 +17,7 @@ const STORAGE_KEY = "algonote:ask-ui";
 const EMPTY: AskUiState = {
   question: "",
   tags: [],
-  importance: [...ALL_IMPORTANCE_LEVELS],
+  difficulty: [...ALL_DIFFICULTY_LEVELS],
   result: null,
   notesExpanded: false,
   error: "",
@@ -39,12 +39,12 @@ function parseTags(raw: unknown): string[] {
   return [];
 }
 
-function parseImportance(raw: unknown): ImportanceLevel[] {
-  if (!Array.isArray(raw)) return [...ALL_IMPORTANCE_LEVELS];
+function parseDifficulty(raw: unknown): DifficultyLevel[] {
+  if (!Array.isArray(raw)) return [...ALL_DIFFICULTY_LEVELS];
   const levels = raw
     .map((value) => Number(value))
-    .filter((value): value is ImportanceLevel => value === 1 || value === 2 || value === 3);
-  return levels.length ? ALL_IMPORTANCE_LEVELS.filter((level) => levels.includes(level)) : [...ALL_IMPORTANCE_LEVELS];
+    .filter((value): value is DifficultyLevel => value === 1 || value === 2 || value === 3);
+  return levels.length ? ALL_DIFFICULTY_LEVELS.filter((level) => levels.includes(level)) : [...ALL_DIFFICULTY_LEVELS];
 }
 
 export function loadAskUiState(): AskUiState {
@@ -57,7 +57,7 @@ export function loadAskUiState(): AskUiState {
         memory = {
           question: typeof parsed.question === "string" ? parsed.question : "",
           tags: parseTags(parsed.tags),
-          importance: parseImportance(parsed.importance),
+          difficulty: parseDifficulty(parsed.difficulty),
           result: parsed.result && typeof parsed.result === "object" ? parsed.result : null,
           notesExpanded: Boolean(parsed.notesExpanded),
           error: typeof parsed.error === "string" ? parsed.error : "",
@@ -68,7 +68,7 @@ export function loadAskUiState(): AskUiState {
       // ignore corrupt storage
     }
   }
-  memory = { ...EMPTY, tags: [], importance: [...ALL_IMPORTANCE_LEVELS] };
+  memory = { ...EMPTY, tags: [], difficulty: [...ALL_DIFFICULTY_LEVELS] };
   return memory;
 }
 
@@ -83,7 +83,7 @@ export function saveAskUiState(state: AskUiState): void {
 }
 
 export function clearAskUiState(): void {
-  memory = { ...EMPTY, tags: [], importance: [...ALL_IMPORTANCE_LEVELS] };
+  memory = { ...EMPTY, tags: [], difficulty: [...ALL_DIFFICULTY_LEVELS] };
   if (typeof window === "undefined") return;
   try {
     sessionStorage.removeItem(STORAGE_KEY);

@@ -1,17 +1,17 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { getImportanceMeta } from "@/lib/importance";
+import { getDifficultyMeta } from "@/lib/difficulty";
 
-type ImportanceBadgeProps = {
+type DifficultyBadgeProps = {
   value: number;
   showLabel?: boolean;
   size?: "sm" | "md";
   className?: string;
 };
 
-function ImportanceIcon({ value, className }: { value: number; className?: string }) {
-  const level = getImportanceMeta(value).value;
+function DifficultyIcon({ value, className }: { value: number; className?: string }) {
+  const level = getDifficultyMeta(value).value;
 
   if (level === 3) {
     return (
@@ -69,14 +69,14 @@ function ImportanceIcon({ value, className }: { value: number; className?: strin
   );
 }
 
-export function ImportanceBadge({
+export function DifficultyBadge({
   value,
   showLabel = false,
   size = "md",
   className = "",
-}: ImportanceBadgeProps) {
-  const t = useTranslations("common.importance");
-  const meta = getImportanceMeta(value);
+}: DifficultyBadgeProps) {
+  const t = useTranslations("common.difficulty");
+  const meta = getDifficultyMeta(value);
   const description = t(meta.descriptionKey);
   const iconSize = size === "sm" ? "size-3.5" : "size-4.5";
   const pad = size === "sm" ? "px-2 py-0.5 gap-1" : "px-2.5 py-1 gap-1.5";
@@ -87,7 +87,7 @@ export function ImportanceBadge({
       aria-label={description}
       className={`inline-flex items-center rounded-full ring-1 ring-inset ${pad} ${meta.badgeClass} ${className}`}
     >
-      <ImportanceIcon value={value} className={`${iconSize} ${meta.iconClass}`} />
+      <DifficultyIcon value={value} className={`${iconSize} ${meta.iconClass}`} />
       {showLabel && (
         <span className="text-xs font-medium tracking-wide">{t(meta.labelKey)}</span>
       )}
@@ -95,4 +95,4 @@ export function ImportanceBadge({
   );
 }
 
-export { ImportanceIcon };
+export { DifficultyIcon };

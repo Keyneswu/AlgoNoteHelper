@@ -7,7 +7,7 @@ export type FieldKind =
   | "code"
   | "tags"
   | "pitfalls"
-  | "importance"
+  | "difficulty"
   | "practiceHistory";
 
 const ICONS: Record<FieldKind, ReactNode> = {
@@ -77,7 +77,7 @@ const ICONS: Record<FieldKind, ReactNode> = {
       <circle cx="12" cy="16.5" r="1" fill="currentColor" />
     </svg>
   ),
-  importance: (
+  difficulty: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className="size-3.5">
       <path
         d="M12 3c1.5 2.2.8 4.2.2 5.4-.4.8-.3 1.3.2 1.8 1.2 1.1 2.6.2 2.6-1.6 2.4 2.1 3.5 4.4 3.5 6.7A6.5 6.5 0 0 1 12 21a6.5 6.5 0 0 1-6.5-5.7C5.2 11.4 8.2 8.2 12 3Z"
@@ -119,7 +119,7 @@ export function FieldLabel({ kind, children, htmlFor, className = "" }: FieldLab
       <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent ring-1 ring-inset ring-accent/40">
         {ICONS[kind]}
       </span>
-      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+      <span className="text-sm font-semibold tracking-wide text-muted">
         {children}
       </span>
     </span>

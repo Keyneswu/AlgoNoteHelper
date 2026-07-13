@@ -1,10 +1,10 @@
-export type ImportanceLevel = 1 | 2 | 3;
+export type DifficultyLevel = 1 | 2 | 3;
 
-export type ImportanceMeta = {
-  value: ImportanceLevel;
+export type DifficultyMeta = {
+  value: DifficultyLevel;
   /** Stable key for i18n lookup */
-  labelKey: "high" | "medium" | "low";
-  descriptionKey: "highPriority" | "mediumPriority" | "lowPriority";
+  labelKey: "hard" | "medium" | "easy";
+  descriptionKey: "hardDesc" | "mediumDesc" | "easyDesc";
   /** Tailwind classes for badge surface (dark-friendly) */
   badgeClass: string;
   /** Tailwind classes for icon stroke/fill */
@@ -15,12 +15,12 @@ export type ImportanceMeta = {
   chipColor: "danger" | "warning" | "success";
 };
 
-/** Higher number = more important. */
-export const IMPORTANCE_LEVELS: ImportanceMeta[] = [
+/** Higher number = harder. */
+export const DIFFICULTY_LEVELS: DifficultyMeta[] = [
   {
     value: 3,
-    labelKey: "high",
-    descriptionKey: "highPriority",
+    labelKey: "hard",
+    descriptionKey: "hardDesc",
     badgeClass: "bg-red-950/80 text-red-200 ring-red-800",
     iconClass: "text-red-400",
     accentClass: "bg-red-500",
@@ -29,7 +29,7 @@ export const IMPORTANCE_LEVELS: ImportanceMeta[] = [
   {
     value: 2,
     labelKey: "medium",
-    descriptionKey: "mediumPriority",
+    descriptionKey: "mediumDesc",
     badgeClass: "bg-amber-950/80 text-amber-200 ring-amber-800",
     iconClass: "text-amber-400",
     accentClass: "bg-amber-400",
@@ -37,8 +37,8 @@ export const IMPORTANCE_LEVELS: ImportanceMeta[] = [
   },
   {
     value: 1,
-    labelKey: "low",
-    descriptionKey: "lowPriority",
+    labelKey: "easy",
+    descriptionKey: "easyDesc",
     badgeClass: "bg-emerald-950/80 text-emerald-200 ring-emerald-800",
     iconClass: "text-emerald-400",
     accentClass: "bg-emerald-500",
@@ -46,17 +46,18 @@ export const IMPORTANCE_LEVELS: ImportanceMeta[] = [
   },
 ];
 
-/** Default filter selection: all levels, High → Low display order. */
-export const ALL_IMPORTANCE_LEVELS: ImportanceLevel[] = IMPORTANCE_LEVELS.map(
+/** Default filter selection: all levels, Hard → Easy display order. */
+export const ALL_DIFFICULTY_LEVELS: DifficultyLevel[] = DIFFICULTY_LEVELS.map(
   (level) => level.value,
 );
-export function clampImportance(value: number): ImportanceLevel {
+
+export function clampDifficulty(value: number): DifficultyLevel {
   if (value >= 3) return 3;
   if (value <= 1) return 1;
   return 2;
 }
 
-export function getImportanceMeta(value: number): ImportanceMeta {
-  const level = clampImportance(value);
-  return IMPORTANCE_LEVELS.find((item) => item.value === level) ?? IMPORTANCE_LEVELS[1]!;
+export function getDifficultyMeta(value: number): DifficultyMeta {
+  const level = clampDifficulty(value);
+  return DIFFICULTY_LEVELS.find((item) => item.value === level) ?? DIFFICULTY_LEVELS[1]!;
 }

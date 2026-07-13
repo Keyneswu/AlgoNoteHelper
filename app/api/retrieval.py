@@ -12,7 +12,7 @@ from app.core.security import require_bridged_user
 from app.db.session import get_db
 from app.models.entities import PracticeNote
 from app.schemas.notes import AskRequest, AskResponse, PracticeNoteOut
-from app.services.embeddings import build_embed_text
+from app.services.embeddings import build_answer_context
 from app.services.llm import (
     chat_completion,
     chat_completion_stream,
@@ -37,12 +37,10 @@ def _apply_ask_filters(filters: list[Any], body: AskRequest, user_id: str) -> li
         normalized = [tag.strip().lower() for tag in body.tags if tag.strip()]
         if normalized:
             filters.append(PracticeNote.tags.contains(normalized))
-    if body.importance:
-        levels = [level for level in body.importance if 1 <= level <= 3]
+    if body.difficulty:
+        levels = [level for level in body.difficulty if 1 <= level <= 3]
         if levels:
-            filters.append(PracticeNote.importance.in_(levels))
-    elif body.importance_min is not None:
-        filters.append(PracticeNote.importance >= body.importance_min)
+            filters.append(PracticeNote.difficulty.in_(levels))
     return filters
 
 
@@ -72,7 +70,7 @@ def _notes_out(notes: list[PracticeNote]) -> list[PracticeNoteOut]:
 def _ask_messages(question: str, notes: list[PracticeNote]) -> list[dict[str, str]]:
     context_blocks = []
     for i, note in enumerate(notes, start=1):
-        context_blocks.append(f"### Note {i} (id={note.id})\n{build_embed_text(note)}")
+        context_blocks.append(f"### Note {i} (id={note.id})\n{build_answer_context(note)}")
     context = "\n\n".join(context_blocks)
     return [
         {"role": "system", "content": ANSWER_SYSTEM},

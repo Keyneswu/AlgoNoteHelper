@@ -1,6 +1,16 @@
-import type { NoteDraft } from "@/lib/types";
+import type { NoteDraft, PracticeNote } from "@/lib/types";
 
-export type ImportCandidate = NoteDraft & { key: string };
+export type SimilarMatchSummary = {
+  note: PracticeNote;
+  score: number;
+};
+
+export type ImportCandidate = NoteDraft & {
+  key: string;
+  matches?: SimilarMatchSummary[];
+  /** Set after resolve Save merge — commit must skip this candidate */
+  mergedNoteId?: number;
+};
 
 export type ImportUiState = {
   markdown: string;

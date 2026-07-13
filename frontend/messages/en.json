@@ -8,7 +8,7 @@
     "logout": "Logout",
     "login": "Login",
     "language": "Language",
-    "localeEn": "English",
+    "localeEn": "EN",
     "localeZh": "中文"
   },
   "common": {
@@ -29,20 +29,20 @@
       "code": "Code",
       "tags": "Tags",
       "pitfalls": "Pitfalls",
-      "importance": "Importance"
+      "difficulty": "Difficulty"
     },
     "placeholders": {
       "titleExample": "Two Sum",
       "pitfallsOnePerLine": "One per line",
       "tagsCommaSeparated": "array, dp"
     },
-    "importance": {
-      "high": "High",
+    "difficulty": {
+      "hard": "Hard",
       "medium": "Medium",
-      "low": "Low",
-      "highPriority": "High priority",
-      "mediumPriority": "Medium priority",
-      "lowPriority": "Low priority",
+      "easy": "Easy",
+      "hardDesc": "Hard difficulty",
+      "mediumDesc": "Medium difficulty",
+      "easyDesc": "Easy difficulty",
       "minOrHigher": "{level} or higher",
       "minFilterSuffix": "{level}+",
       "any": "Any"
@@ -98,8 +98,15 @@
         "title": "Title",
         "titlePlaceholder": "Search by problem name…",
         "tags": "Tags",
-        "importance": "Importance",
-        "search": "Search"
+        "difficulty": "Difficulty",
+        "practicedRange": "Practiced range",
+        "sort": "Sort",
+        "sortLearning": "Default",
+        "sortDifficultyAsc": "Easy → Hard",
+        "sortDifficultyDesc": "Hard → Easy",
+        "sortPracticed": "Recently practiced",
+        "search": "Search",
+        "pageSummary": "{from}–{to} of {total}"
       },
       "empty": "No notes match these filters. Create one to start your archive.",
       "errors": {
@@ -117,9 +124,16 @@
       "headingFallback": "Edit note",
       "loading": "Loading note…",
       "rewriteWithAi": "Rewrite with AI",
-      "aiRewriteHint": "AI rewrites only update the editor. Save when you are ready.",
+      "generateApproach": "AI generate approach",
+      "reverse": "Reverse",
+      "aiAssistHint": "AI only updates the editor. Generate approach needs a complete problem statement. Use Reverse to restore the last saved text, then Save when ready.",
+      "aiRewriteHint": "AI rewrites only update the editor. Use Reverse to restore the last saved text, then Save when you are ready.",
       "save": "Save",
       "saveAndReturn": "Save and return",
+      "delete": "Delete note",
+      "deleteHeading": "Delete this note?",
+      "deleteConfirm": "This will permanently delete “{title}” and cannot be undone.",
+      "deleteCancel": "Cancel",
       "practiceHistory": {
         "heading": "Practice history",
         "empty": "No practice dates yet.",
@@ -130,7 +144,11 @@
       "errors": {
         "couldNotLoad": "Could not load note",
         "couldNotRewrite": "Could not rewrite this field",
-        "couldNotSave": "Could not save note"
+        "couldNotGenerateApproach": "Could not generate approach",
+        "statementRequiredForApproach": "Add a problem statement before generating an approach.",
+        "statementIncompleteForApproach": "The problem statement looks incomplete. Add more detail (inputs, goals, constraints) before generating.",
+        "couldNotSave": "Could not save note",
+        "couldNotDelete": "Could not delete note"
       }
     }
   },
@@ -144,9 +162,32 @@
     "reviewHint": "Collapsed by default — expand a problem to edit its fields.",
     "importCount": "Import {count} notes",
     "untitled": "Untitled",
+    "possibleConflict": "Conflict",
+    "possibleConflictHint": "Similar notes found — open to merge or keep as a new note",
+    "mergedBadge": "Merged",
     "errors": {
       "couldNotExtract": "Could not extract notes",
       "couldNotImport": "Could not import notes"
+    }
+  },
+  "resolve": {
+    "eyebrow": "Near duplicate",
+    "heading": "Resolve conflict",
+    "hint": "Edit incoming on the left (used for Keep as new). Empty fields on the existing note were filled from incoming. Reverse restores the original value from when this page opened.",
+    "back": "Back",
+    "keepAsNew": "Keep as new",
+    "saveMerge": "Save into existing",
+    "matchesHeading": "Possible matches",
+    "score": "score {score}",
+    "incomingHeading": "Incoming (editable)",
+    "existingHeading": "Existing #{id} (editable)",
+    "reverse": "Reverse",
+    "aiMerge": "AI merge",
+    "empty": "No conflict session found. Go back and try again.",
+    "errors": {
+      "couldNotMerge": "Could not merge into existing note",
+      "couldNotCreate": "Could not create note",
+      "couldNotAiMerge": "Could not AI-merge this field"
     }
   },
   "ask": {
@@ -155,7 +196,7 @@
     "question": "Question",
     "questionPlaceholder": "When should I choose a monotonic stack?",
     "optionalTags": "Tags",
-    "importance": "Importance",
+    "difficulty": "Difficulty",
     "submit": "Ask notes",
     "answerHeading": "Answer",
     "thinking": "Thinking…",

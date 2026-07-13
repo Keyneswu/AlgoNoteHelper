@@ -5,7 +5,7 @@ export type NoteDraft = {
   code: string;
   pitfalls: string[];
   tags: string[];
-  importance: number;
+  difficulty: number;
   review_dates: string[];
   source_meta?: Record<string, unknown> | null;
 };
@@ -57,7 +57,7 @@ export const emptyNote: NoteDraft = {
   code: "",
   pitfalls: [],
   tags: [],
-  /** Medium (yellow) — see `lib/importance.ts` (1 low / 2 medium / 3 high). */
-  importance: 2,
+  /** Medium (yellow) — see `lib/difficulty.ts` (1 easy / 2 medium / 3 hard). */
+  difficulty: 2,
   review_dates: [],
 };

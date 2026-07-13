@@ -3,18 +3,18 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Card, Form, Input, TextArea, TextField } from "@heroui/react";
+import { AlertDialog, Button, Card, Form, Input, TextArea, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
 import { CodeField } from "@/components/CodeField";
 import { FieldLabel } from "@/components/FieldLabel";
-import { ImportanceBadge } from "@/components/ImportanceBadge";
-import { ImportancePicker } from "@/components/ImportancePicker";
+import { DifficultyBadge } from "@/components/DifficultyBadge";
+import { DifficultyPicker } from "@/components/DifficultyPicker";
 import { NoteTags } from "@/components/NoteTags";
 import { PracticeHistory } from "@/components/PracticeHistory";
 import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
-import { clampImportance, type ImportanceLevel } from "@/lib/importance";
+import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
 
 export default function NotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,19 +25,13 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
   const { data: session, isPending } = authClient.useSession();
   const codeLanguage = usePreferredCodeLanguage(!!session);
   const [note, setNote] = useState<PracticeNote | null>(null);
+  const [baseline, setBaseline] = useState<Pick<PracticeNote, "statement" | "approach" | "code"> | null>(
+    null,
+  );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [rewriting, setRewriting] = useState<string | null>(null);
-
-  const textFields: Array<{
-    key: "statement" | "approach";
-    label: string;
-    kind: "statement" | "approach";
-    rows: number;
-  }> = [
-    { key: "statement", label: tCommon("fields.problemStatement"), kind: "statement", rows: 5 },
-    { key: "approach", label: tCommon("fields.approach"), kind: "approach", rows: 5 },
-  ];
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -49,7 +43,15 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
       const response = await fetch(`/api/bff/notes/${id}`);
       const data = (await response.json()) as PracticeNote | { error?: string };
       if (!response.ok) setError((data as { error?: string }).error ?? t("errors.couldNotLoad"));
-      else setNote(data as PracticeNote);
+      else {
+        const loaded = data as PracticeNote;
+        setNote(loaded);
+        setBaseline({
+          statement: loaded.statement,
+          approach: loaded.approach,
+          code: loaded.code,
+        });
+      }
     })();
   }, [id, session, t]);
 
@@ -57,7 +59,19 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     setNote((current) => (current ? { ...current, [field]: value } : current));
   }
 
-  async function rewrite(field: "statement" | "approach" | "code") {
+  function reverseField(field: "statement" | "approach" | "code") {
+    if (!baseline) return;
+    update(field, baseline[field]);
+  }
+
+  function statementReadiness(statement: string): "ok" | "empty" | "incomplete" {
+    const text = statement.trim();
+    if (!text) return "empty";
+    if (text.length < 40) return "incomplete";
+    return "ok";
+  }
+
+  async function rewrite(field: "statement" | "code") {
     if (!note) return;
     setRewriting(field);
     setError("");
@@ -72,6 +86,35 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     update(field, data.rewritten ?? note[field]);
   }
 
+  async function generateApproach() {
+    if (!note) return;
+    const readiness = statementReadiness(note.statement);
+    if (readiness === "empty") {
+      setError(t("errors.statementRequiredForApproach"));
+      return;
+    }
+    if (readiness === "incomplete") {
+      setError(t("errors.statementIncompleteForApproach"));
+      return;
+    }
+    setRewriting("approach");
+    setError("");
+    const response = await fetch("/api/bff/rewrite/approach", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: note.title,
+        statement: note.statement,
+        tags: note.tags,
+        code: note.code,
+      }),
+    });
+    const data = (await response.json()) as { rewritten?: string; error?: string };
+    setRewriting(null);
+    if (!response.ok) return setError(data.error ?? t("errors.couldNotGenerateApproach"));
+    update("approach", data.rewritten ?? note.approach);
+  }
+
   async function saveNote(andReturn: boolean) {
     if (!note) return;
     setSaving(true);
@@ -79,18 +122,38 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     const response = await fetch(`/api/bff/notes/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...note, importance: clampImportance(note.importance) }),
+      body: JSON.stringify({ ...note, difficulty: clampDifficulty(note.difficulty) }),
     });
     const data = (await response.json()) as PracticeNote | { error?: string };
     setSaving(false);
     if (!response.ok) return setError((data as { error?: string }).error ?? t("errors.couldNotSave"));
-    setNote(data as PracticeNote);
+    const saved = data as PracticeNote;
+    setNote(saved);
+    setBaseline({
+      statement: saved.statement,
+      approach: saved.approach,
+      code: saved.code,
+    });
     if (andReturn) router.push("/notes");
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await saveNote(false);
+  }
+
+  async function confirmDelete() {
+    if (!note) return;
+    setDeleting(true);
+    setError("");
+    const response = await fetch(`/api/bff/notes/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      setDeleting(false);
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(data.error ?? t("errors.couldNotDelete"));
+      return;
+    }
+    router.replace("/notes");
   }
 
   if (isPending || !session) return null;
@@ -116,7 +179,7 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
           </h1>
           {note && (
             <div className="flex flex-wrap items-center gap-2">
-              <ImportanceBadge value={note.importance} showLabel />
+              <DifficultyBadge value={note.difficulty} showLabel />
               <NoteTags tags={note.tags} emptyLabel="" />
             </div>
           )}
@@ -130,25 +193,68 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
               <Form className="flex flex-col gap-5" onSubmit={submit}>
                 <TextField isRequired name="title" value={note.title} onChange={(value) => update("title", value)}>
                   <FieldLabel kind="title">{tCommon("fields.title")}</FieldLabel>
-                  <Input />
+                  <Input className="!text-xl font-semibold leading-snug" />
                 </TextField>
-                {textFields.map(({ key, label, kind, rows }) => (
-                  <div key={key} className="space-y-2">
-                    <TextField name={key} value={note[key]} onChange={(value) => update(key, value)}>
-                      <FieldLabel kind={kind}>{label}</FieldLabel>
-                      <TextArea rows={rows} />
-                    </TextField>
+                <div className="space-y-2">
+                  <TextField
+                    name="statement"
+                    value={note.statement}
+                    onChange={(value) => update("statement", value)}
+                  >
+                    <FieldLabel kind="statement">{tCommon("fields.problemStatement")}</FieldLabel>
+                    <TextArea rows={5} className="!text-base leading-relaxed" />
+                  </TextField>
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
                       size="sm"
                       variant="secondary"
-                      isPending={rewriting === key}
-                      onPress={() => rewrite(key)}
+                      isPending={rewriting === "statement"}
+                      onPress={() => rewrite("statement")}
                     >
                       {t("rewriteWithAi")}
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="tertiary"
+                      isDisabled={!baseline || note.statement === baseline.statement}
+                      onPress={() => reverseField("statement")}
+                    >
+                      {t("reverse")}
+                    </Button>
                   </div>
-                ))}
+                </div>
+                <div className="space-y-2">
+                  <TextField
+                    name="approach"
+                    value={note.approach}
+                    onChange={(value) => update("approach", value)}
+                  >
+                    <FieldLabel kind="approach">{tCommon("fields.approach")}</FieldLabel>
+                    <TextArea rows={5} />
+                  </TextField>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      isPending={rewriting === "approach"}
+                      onPress={() => void generateApproach()}
+                    >
+                      {t("generateApproach")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="tertiary"
+                      isDisabled={!baseline || note.approach === baseline.approach}
+                      onPress={() => reverseField("approach")}
+                    >
+                      {t("reverse")}
+                    </Button>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <FieldLabel kind="code">{tCommon("fields.code")}</FieldLabel>
                   <CodeField
@@ -157,62 +263,112 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                     language={codeLanguage}
                     rows={10}
                   />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    isPending={rewriting === "code"}
-                    onPress={() => rewrite("code")}
-                  >
-                    {t("rewriteWithAi")}
-                  </Button>
-                </div>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <TagPicker value={note.tags} onChange={(tags) => update("tags", tags)} />
-                  <div className="space-y-5">
-                    <TextField
-                      name="pitfalls"
-                      value={note.pitfalls.join("\n")}
-                      onChange={(value) =>
-                        update(
-                          "pitfalls",
-                          value
-                            .split("\n")
-                            .map((item) => item.trim())
-                            .filter(Boolean),
-                        )
-                      }
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      isPending={rewriting === "code"}
+                      onPress={() => rewrite("code")}
                     >
-                      <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
-                      <TextArea rows={3} />
-                    </TextField>
+                      {t("rewriteWithAi")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="tertiary"
+                      isDisabled={!baseline || note.code === baseline.code}
+                      onPress={() => reverseField("code")}
+                    >
+                      {t("reverse")}
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
+                  <div className="space-y-5">
+                    <TagPicker value={note.tags} onChange={(tags) => update("tags", tags)} />
+                    <div className="space-y-2">
+                      <FieldLabel kind="difficulty">{tCommon("fields.difficulty")}</FieldLabel>
+                      <DifficultyPicker
+                        value={note.difficulty}
+                        onChange={(value: DifficultyLevel) => update("difficulty", value)}
+                        showLegend={false}
+                      />
+                    </div>
                     <PracticeHistory
                       dates={note.review_dates ?? []}
                       onChange={(dates) => update("review_dates", dates)}
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <FieldLabel kind="importance">{tCommon("fields.importance")}</FieldLabel>
-                  <ImportancePicker
-                    value={note.importance}
-                    onChange={(value: ImportanceLevel) => update("importance", value)}
-                    showLegend={false}
-                  />
-                </div>
-                <p className="text-sm text-muted">{t("aiRewriteHint")}</p>
-                <div className="flex flex-wrap gap-2">
-                  <Button type="submit" isPending={saving}>
-                    {t("save")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    isPending={saving}
-                    onPress={() => void saveNote(true)}
+                  <TextField
+                    name="pitfalls"
+                    value={note.pitfalls.join("\n")}
+                    onChange={(value) =>
+                      update(
+                        "pitfalls",
+                        value
+                          .split("\n")
+                          .map((item) => item.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                    className="sm:min-h-full"
                   >
-                    {t("saveAndReturn")}
-                  </Button>
+                    <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
+                    <TextArea rows={12} className="min-h-[16rem] sm:min-h-[22rem]" />
+                  </TextField>
+                </div>
+                <p className="text-sm text-muted">{t("aiAssistHint")}</p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" isPending={saving} isDisabled={deleting}>
+                      {t("save")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      isPending={saving}
+                      isDisabled={deleting}
+                      onPress={() => void saveNote(true)}
+                    >
+                      {t("saveAndReturn")}
+                    </Button>
+                  </div>
+                  <AlertDialog>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      isDisabled={saving || deleting}
+                    >
+                      {t("delete")}
+                    </Button>
+                    <AlertDialog.Backdrop>
+                      <AlertDialog.Container>
+                        <AlertDialog.Dialog className="sm:max-w-[400px]">
+                          <AlertDialog.CloseTrigger />
+                          <AlertDialog.Header>
+                            <AlertDialog.Icon status="danger" />
+                            <AlertDialog.Heading>{t("deleteHeading")}</AlertDialog.Heading>
+                          </AlertDialog.Header>
+                          <AlertDialog.Body>
+                            <p>{t("deleteConfirm", { title: note.title })}</p>
+                          </AlertDialog.Body>
+                          <AlertDialog.Footer>
+                            <Button slot="close" variant="tertiary" isDisabled={deleting}>
+                              {t("deleteCancel")}
+                            </Button>
+                            <Button
+                              variant="danger"
+                              isPending={deleting}
+                              onPress={() => void confirmDelete()}
+                            >
+                              {t("delete")}
+                            </Button>
+                          </AlertDialog.Footer>
+                        </AlertDialog.Dialog>
+                      </AlertDialog.Container>
+                    </AlertDialog.Backdrop>
+                  </AlertDialog>
                 </div>
               </Form>
             </Card.Content>

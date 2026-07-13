@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { Button } from "@heroui/react";
+import { ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { LOCALE_COOKIE, type AppLocale, isAppLocale } from "@/i18n/config";
 
 function setLocaleCookie(locale: AppLocale) {
@@ -23,21 +23,21 @@ export function LocaleSwitcher() {
   }
 
   return (
-    <div className="flex items-center gap-1" role="group" aria-label={t("language")}>
-      <Button
-        size="sm"
-        variant={current === "en" ? "secondary" : "tertiary"}
-        onPress={() => switchTo("en")}
-      >
-        {t("localeEn")}
-      </Button>
-      <Button
-        size="sm"
-        variant={current === "zh-CN" ? "secondary" : "tertiary"}
-        onPress={() => switchTo("zh-CN")}
-      >
-        {t("localeZh")}
-      </Button>
-    </div>
+    <ToggleButtonGroup
+      size="sm"
+      selectionMode="single"
+      disallowEmptySelection
+      selectedKeys={new Set([current])}
+      onSelectionChange={(keys) => {
+        const selected = [...keys][0];
+        if (typeof selected === "string" && isAppLocale(selected)) {
+          switchTo(selected);
+        }
+      }}
+      aria-label={t("language")}
+    >
+      <ToggleButton id="en">{t("localeEn")}</ToggleButton>
+      <ToggleButton id="zh-CN">{t("localeZh")}</ToggleButton>
+    </ToggleButtonGroup>
   );
 }
