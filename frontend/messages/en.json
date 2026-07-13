@@ -31,6 +31,14 @@
       "pitfalls": "Pitfalls",
       "difficulty": "Difficulty"
     },
+    "codeField": {
+      "expand": "Expand full code",
+      "collapse": "Collapse code"
+    },
+    "codeField": {
+      "expand": "Expand full code",
+      "collapse": "Collapse code"
+    },
     "placeholders": {
       "titleExample": "Two Sum",
       "pitfallsOnePerLine": "One per line",
@@ -257,24 +265,42 @@
       "apiKeyWithHint": "API key ({hint})",
       "name": "Name",
       "email": "Email",
-      "password": "Password"
+      "password": "Password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "resetPassword": "New password"
+    },
+    "password": {
+      "heading": "Change password",
+      "description": "Update your password. Other signed-in devices will be signed out.",
+      "submit": "Update password",
+      "minLengthHint": "At least 8 characters"
     },
     "saveConfiguration": "Save configuration",
     "admin": {
       "usersHeading": "Admin: users",
       "loadUsers": "Load users",
-      "createUser": "Create user"
+      "createUser": "Create user",
+      "resetPassword": "Reset"
     },
     "messages": {
       "settingsSaved": "Settings saved.",
-      "userCreated": "User created."
+      "userCreated": "User created.",
+      "passwordChanged": "Password updated. Other sessions were signed out.",
+      "passwordReset": "Password reset. That user must sign in again."
     },
     "errors": {
       "couldNotLoadLlm": "Could not load LLM settings",
       "couldNotSave": "Could not save settings",
       "verificationFailed": "Verification failed",
       "couldNotListUsers": "Could not list users",
-      "couldNotCreateUser": "Could not create user"
+      "couldNotCreateUser": "Could not create user",
+      "passwordMismatch": "New password and confirmation do not match.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "couldNotChangePassword": "Could not change password",
+      "couldNotResetPassword": "Could not reset password",
+      "couldNotRevokeSessions": "Password was set, but sessions could not be revoked"
     }
   }
 }

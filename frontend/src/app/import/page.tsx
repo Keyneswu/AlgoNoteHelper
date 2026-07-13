@@ -20,6 +20,7 @@ import {
   type ImportCandidate,
 } from "@/lib/import-store";
 import { clampDifficulty, getDifficultyMeta, type DifficultyLevel } from "@/lib/difficulty";
+import { normalizePitfalls, pitfallsFromText } from "@/lib/pitfalls";
 import { noteToDraft, saveResolveSession } from "@/lib/resolve-store";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
 
@@ -156,6 +157,7 @@ export default function ImportPage() {
         candidates: pending.map(({ key: _key, matches: _matches, mergedNoteId: _merged, ...candidate }) => ({
           ...candidate,
           difficulty: clampDifficulty(candidate.difficulty),
+          pitfalls: normalizePitfalls(candidate.pitfalls),
         })),
       }),
     });
@@ -300,7 +302,7 @@ export default function ImportPage() {
                           onChange={(value) => update(candidate.key, "approach", value)}
                         >
                           <FieldLabel kind="approach">{tCommon("fields.approach")}</FieldLabel>
-                          <TextArea rows={3} />
+                          <TextArea rows={3} className="!text-base leading-relaxed" />
                         </TextField>
                         <div className="space-y-2">
                           <FieldLabel kind="code">{tCommon("fields.code")}</FieldLabel>
@@ -308,7 +310,8 @@ export default function ImportPage() {
                             value={candidate.code}
                             onChange={(value) => update(candidate.key, "code", value)}
                             language={codeLanguage}
-                            rows={4}
+                            minRows={4}
+                            maxRows={12}
                           />
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
@@ -321,15 +324,11 @@ export default function ImportPage() {
                             name={`pitfalls-${candidate.key}`}
                             value={candidate.pitfalls.join("\n")}
                             onChange={(value) =>
-                              update(
-                                candidate.key,
-                                "pitfalls",
-                                value.split("\n").map((item) => item.trim()).filter(Boolean),
-                              )
+                              update(candidate.key, "pitfalls", pitfallsFromText(value))
                             }
                           >
                             <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
-                            <TextArea rows={2} />
+                            <TextArea rows={2} className="!text-base leading-relaxed" />
                           </TextField>
                         </div>
                         {!!candidate.tags.length && <NoteTags tags={candidate.tags} />}

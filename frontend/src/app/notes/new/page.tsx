@@ -12,6 +12,7 @@ import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
 import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
+import { normalizePitfalls, pitfallsFromText } from "@/lib/pitfalls";
 import { noteToDraft, saveResolveSession } from "@/lib/resolve-store";
 import { emptyNote, type NoteDraft, type PracticeNote } from "@/lib/types";
 
@@ -101,7 +102,11 @@ export default function NewNotePage() {
     const response = await fetch("/api/bff/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...draft, difficulty: clampDifficulty(draft.difficulty) }),
+      body: JSON.stringify({
+        ...draft,
+        difficulty: clampDifficulty(draft.difficulty),
+        pitfalls: normalizePitfalls(draft.pitfalls),
+      }),
     });
     const data = (await response.json()) as PracticeNote & { error?: string };
     if (!response.ok) throw new Error(data.error ?? t("errors.couldNotCreate"));
@@ -129,7 +134,10 @@ export default function NewNotePage() {
       if (matches.length) {
         saveResolveSession({
           origin: "new",
-          incoming: noteToDraft(note),
+          incoming: noteToDraft({
+            ...note,
+            pitfalls: normalizePitfalls(note.pitfalls),
+          }),
           matches,
         });
         setSaving(false);
@@ -211,7 +219,7 @@ export default function NewNotePage() {
                   onChange={(value) => update("approach", value)}
                 >
                   <FieldLabel kind="approach">{tCommon("fields.approach")}</FieldLabel>
-                  <TextArea rows={5} />
+                  <TextArea rows={5} className="!text-base leading-relaxed" />
                 </TextField>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -240,7 +248,8 @@ export default function NewNotePage() {
                   value={note.code}
                   onChange={(value) => update("code", value)}
                   language={codeLanguage}
-                  rows={10}
+                  minRows={8}
+                  maxRows={22}
                 />
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -278,20 +287,12 @@ export default function NewNotePage() {
                 <TextField
                   name="pitfalls"
                   value={note.pitfalls.join("\n")}
-                  onChange={(value) =>
-                    update(
-                      "pitfalls",
-                      value
-                        .split("\n")
-                        .map((item) => item.trim())
-                        .filter(Boolean),
-                    )
-                  }
+                  onChange={(value) => update("pitfalls", pitfallsFromText(value))}
                 >
                   <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
                   <TextArea
                     rows={8}
-                    className="min-h-[12rem]"
+                    className="min-h-[12rem] !text-base leading-relaxed"
                     placeholder={tCommon("placeholders.pitfallsOnePerLine")}
                   />
                 </TextField>

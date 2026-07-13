@@ -13,6 +13,7 @@ import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
 import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
 import { loadImportUiState, saveImportUiState } from "@/lib/import-store";
+import { normalizePitfalls, pitfallsFromText } from "@/lib/pitfalls";
 import {
   buildMergeCanvas,
   clearResolveSession,
@@ -126,13 +127,7 @@ export function ResolveConflictPage() {
     }
     const merged = data.merged ?? "";
     if (field === "pitfalls") {
-      updateCanvas(
-        "pitfalls",
-        merged
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean),
-      );
+      updateCanvas("pitfalls", normalizePitfalls(merged.split("\n")));
     } else {
       updateCanvas(field, merged);
     }
@@ -187,7 +182,7 @@ export function ResolveConflictPage() {
         statement: canvas.statement,
         approach: canvas.approach,
         code: canvas.code,
-        pitfalls: canvas.pitfalls,
+        pitfalls: normalizePitfalls(canvas.pitfalls),
         tags: canvas.tags,
         difficulty: clampDifficulty(canvas.difficulty),
       }),
@@ -211,6 +206,7 @@ export function ResolveConflictPage() {
       body: JSON.stringify({
         ...incoming,
         difficulty: clampDifficulty(incoming.difficulty),
+        pitfalls: normalizePitfalls(incoming.pitfalls),
       }),
     });
     const data = (await response.json()) as PracticeNote & { error?: string };
@@ -340,7 +336,8 @@ export function ResolveConflictPage() {
                   value={incoming.code}
                   onChange={(value) => updateIncoming("code", value)}
                   language={codeLanguage}
-                  rows={8}
+                  minRows={6}
+                  maxRows={14}
                 />
               </div>
               <EditableField
@@ -348,15 +345,7 @@ export function ResolveConflictPage() {
                 value={incoming.pitfalls.join("\n")}
                 multiline
                 rows={3}
-                onChange={(value) =>
-                  updateIncoming(
-                    "pitfalls",
-                    value
-                      .split("\n")
-                      .map((line) => line.trim())
-                      .filter(Boolean),
-                  )
-                }
+                onChange={(value) => updateIncoming("pitfalls", pitfallsFromText(value))}
                 onReverse={() => reverseIncomingField("pitfalls")}
                 reverseLabel={t("reverse")}
                 aiLabel={t("aiMerge")}
@@ -459,7 +448,8 @@ export function ResolveConflictPage() {
                   value={canvas.code}
                   onChange={(value) => updateCanvas("code", value)}
                   language={codeLanguage}
-                  rows={8}
+                  minRows={6}
+                  maxRows={14}
                 />
               </div>
               <EditableField
@@ -467,15 +457,7 @@ export function ResolveConflictPage() {
                 value={canvas.pitfalls.join("\n")}
                 multiline
                 rows={3}
-                onChange={(value) =>
-                  updateCanvas(
-                    "pitfalls",
-                    value
-                      .split("\n")
-                      .map((line) => line.trim())
-                      .filter(Boolean),
-                  )
-                }
+                onChange={(value) => updateCanvas("pitfalls", pitfallsFromText(value))}
                 onReverse={() => reverseExistingField("pitfalls")}
                 onAiMerge={canAi("pitfalls") ? () => void aiMergeField("pitfalls") : undefined}
                 aiPending={mergingField === "pitfalls"}
@@ -586,7 +568,11 @@ function EditableField({
         />
       </div>
       <TextField value={value} onChange={onChange}>
-        {multiline ? <TextArea rows={rows ?? 3} /> : <Input />}
+        {multiline ? (
+          <TextArea rows={rows ?? 3} className="!text-base leading-relaxed" />
+        ) : (
+          <Input />
+        )}
       </TextField>
     </div>
   );

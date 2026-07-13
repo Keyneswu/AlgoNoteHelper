@@ -1,4 +1,5 @@
 import type { NoteDraft, PracticeNote } from "@/lib/types";
+import { normalizePitfalls } from "@/lib/pitfalls";
 
 export type ResolveOrigin = "import" | "new";
 
@@ -35,7 +36,7 @@ export function noteToDraft(note: PracticeNote | NoteDraft): NoteDraft {
     statement: note.statement,
     approach: note.approach,
     code: note.code,
-    pitfalls: [...(note.pitfalls ?? [])],
+    pitfalls: normalizePitfalls(note.pitfalls ?? []),
     tags: [...(note.tags ?? [])],
     difficulty: note.difficulty,
     review_dates: [...(note.review_dates ?? [])],

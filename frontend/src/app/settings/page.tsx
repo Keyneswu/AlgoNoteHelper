@@ -11,6 +11,7 @@ import type { LlmConfig, LlmConfigUpdate, PreferredCodeLanguage } from "@/lib/ty
 type AdminUser = { id: string; name: string; email: string; role?: string | null };
 
 const CODE_LANGUAGE_IDS: PreferredCodeLanguage[] = ["java", "python", "cpp"];
+const MIN_PASSWORD_LENGTH = 8;
 
 const blankConfig: LlmConfig = {
   chat_provider: "deepseek",
@@ -34,11 +35,18 @@ export default function SettingsPage() {
   const [chatKey, setChatKey] = useState("");
   const [embeddingKey, setEmbeddingKey] = useState("");
   const [message, setMessage] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [ownNewPassword, setOwnNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetPasswordByUserId, setResetPasswordByUserId] = useState<Record<string, string>>({});
   const isAdmin = (session?.user as { role?: string } | undefined)?.role?.split(",").includes("admin") ?? false;
 
   function apiKeyLabel(hint: string | null) {
@@ -96,6 +104,34 @@ export default function SettingsPage() {
     if (data.ok) setConfig((current) => ({ ...current, [`${kind}_verified`]: true }));
   }
 
+  async function changeOwnPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPasswordMessage("");
+    if (ownNewPassword.length < MIN_PASSWORD_LENGTH) {
+      setPasswordMessage(t("errors.passwordTooShort"));
+      return;
+    }
+    if (ownNewPassword !== confirmPassword) {
+      setPasswordMessage(t("errors.passwordMismatch"));
+      return;
+    }
+    setChangingPassword(true);
+    const result = await authClient.changePassword({
+      currentPassword,
+      newPassword: ownNewPassword,
+      revokeOtherSessions: true,
+    });
+    setChangingPassword(false);
+    if (result.error) {
+      setPasswordMessage(result.error.message ?? t("errors.couldNotChangePassword"));
+      return;
+    }
+    setCurrentPassword("");
+    setOwnNewPassword("");
+    setConfirmPassword("");
+    setPasswordMessage(t("messages.passwordChanged"));
+  }
+
   async function loadUsers() {
     const result = await authClient.admin.listUsers({ query: { limit: 100 } });
     if (result.error) return setMessage(result.error.message ?? t("errors.couldNotListUsers"));
@@ -119,6 +155,33 @@ export default function SettingsPage() {
     void loadUsers();
   }
 
+  async function resetUserPassword(userId: string) {
+    const password = resetPasswordByUserId[userId] ?? "";
+    setMessage("");
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setMessage(t("errors.passwordTooShort"));
+      return;
+    }
+    setResettingUserId(userId);
+    const setResult = await authClient.admin.setUserPassword({
+      userId,
+      newPassword: password,
+    });
+    if (setResult.error) {
+      setResettingUserId(null);
+      setMessage(setResult.error.message ?? t("errors.couldNotResetPassword"));
+      return;
+    }
+    const revokeResult = await authClient.admin.revokeUserSessions({ userId });
+    setResettingUserId(null);
+    if (revokeResult.error) {
+      setMessage(revokeResult.error.message ?? t("errors.couldNotRevokeSessions"));
+      return;
+    }
+    setResetPasswordByUserId((current) => ({ ...current, [userId]: "" }));
+    setMessage(t("messages.passwordReset"));
+  }
+
   if (isPending || !session) return null;
   return (
     <div className="min-h-screen bg-canvas">
@@ -128,6 +191,46 @@ export default function SettingsPage() {
           <p className="text-sm font-semibold text-accent">{t("eyebrow")}</p>
           <h1 className="text-3xl font-semibold text-foreground">{t("heading")}</h1>
         </div>
+        <Card className="border border-border bg-surface">
+          <Card.Header>
+            <div>
+              <h2 className="font-semibold text-foreground">{t("password.heading")}</h2>
+              <p className="mt-1 text-sm text-muted">{t("password.description")}</p>
+            </div>
+          </Card.Header>
+          <Card.Content>
+            <Form className="space-y-4" onSubmit={changeOwnPassword}>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <SettingField
+                  label={t("fields.currentPassword")}
+                  value={currentPassword}
+                  change={setCurrentPassword}
+                  type="password"
+                  autoComplete="current-password"
+                />
+                <SettingField
+                  label={t("fields.newPassword")}
+                  value={ownNewPassword}
+                  change={setOwnNewPassword}
+                  type="password"
+                  autoComplete="new-password"
+                />
+                <SettingField
+                  label={t("fields.confirmPassword")}
+                  value={confirmPassword}
+                  change={setConfirmPassword}
+                  type="password"
+                  autoComplete="new-password"
+                />
+              </div>
+              <p className="text-xs text-muted">{t("password.minLengthHint")}</p>
+              {passwordMessage && <p className="text-sm text-foreground/90">{passwordMessage}</p>}
+              <Button type="submit" isPending={changingPassword}>
+                {t("password.submit")}
+              </Button>
+            </Form>
+          </Card.Content>
+        </Card>
         <Card className="border border-border bg-surface">
           <Card.Header>
             <h2 className="font-semibold text-foreground">{t("llmConfiguration")}</h2>
@@ -253,22 +356,55 @@ export default function SettingsPage() {
                   value={newPassword}
                   change={setNewPassword}
                   type="password"
+                  autoComplete="new-password"
                 />
                 <div className="self-end">
                   <Button type="submit">{t("admin.createUser")}</Button>
                 </div>
               </Form>
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex justify-between border-t border-border py-3 text-sm text-foreground"
-                >
-                  <span>
-                    {user.name} · {user.email}
-                  </span>
-                  <span className="text-muted">{user.role ?? "user"}</span>
-                </div>
-              ))}
+              {message && <p className="text-sm text-foreground/90">{message}</p>}
+              {users.map((user) => {
+                const resetPassword = resetPasswordByUserId[user.id] ?? "";
+                return (
+                  <div
+                    key={user.id}
+                    className="grid gap-3 border-t border-border py-3 text-sm text-foreground sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                  >
+                    <div className="min-w-0">
+                      <span className="truncate">
+                        {user.name} · {user.email}
+                      </span>
+                      <span className="ml-2 text-muted">{user.role ?? "user"}</span>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <TextField
+                        name={`reset-${user.id}`}
+                        type="password"
+                        value={resetPassword}
+                        onChange={(value) =>
+                          setResetPasswordByUserId((current) => ({
+                            ...current,
+                            [user.id]: value,
+                          }))
+                        }
+                        className="w-40"
+                      >
+                        <Label>{t("fields.resetPassword")}</Label>
+                        <Input autoComplete="new-password" />
+                      </TextField>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        isPending={resettingUserId === user.id}
+                        isDisabled={resetPassword.length < MIN_PASSWORD_LENGTH}
+                        onPress={() => resetUserPassword(user.id)}
+                      >
+                        {t("admin.resetPassword")}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </Card.Content>
           </Card>
         )}
@@ -282,16 +418,18 @@ function SettingField({
   value,
   change,
   type = "text",
+  autoComplete,
 }: {
   label: string;
   value: string;
   change: (value: string) => void;
   type?: string;
+  autoComplete?: string;
 }) {
   return (
     <TextField name={label} type={type} value={value} onChange={change}>
       <Label>{label}</Label>
-      <Input />
+      <Input autoComplete={autoComplete} />
     </TextField>
   );
 }

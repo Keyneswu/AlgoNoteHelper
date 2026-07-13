@@ -32,7 +32,8 @@
   --default: oklch(94.00% 0.0015 148.67);
   --default-foreground: oklch(21.03% 0.0059 148.67);
   --field-background: oklch(100.00% 0.0008 148.67);
-  --field-border: transparent;
+  /* Soft outline so fields stay findable on surface cards without heavy chrome */
+  --field-border: oklch(88.00% 0.0015 148.67);
   --field-foreground: oklch(21.03% 0.0015 148.67);
   --field-placeholder: oklch(55.17% 0.0030 148.67);
   --focus: oklch(76.97% 0.2124 148.67);
@@ -83,8 +84,9 @@
   --danger-foreground: oklch(99.11% 0 0);
   --default: oklch(27.40% 0.0015 148.67);
   --default-foreground: oklch(99.11% 0 0);
-  --field-background: oklch(21.03% 0.0030 148.67);
-  --field-border: transparent;
+  /* Slightly inset vs surface so fields read as hit targets on dark cards */
+  --field-background: oklch(17.50% 0.0025 148.67);
+  --field-border: oklch(34.00% 0.0015 148.67);
   --field-foreground: oklch(99.11% 0.0015 148.67);
   --field-placeholder: oklch(70.50% 0.0030 148.67);
   --focus: oklch(76.97% 0.2124 148.67);

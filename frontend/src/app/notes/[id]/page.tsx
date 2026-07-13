@@ -15,6 +15,7 @@ import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
 import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
+import { normalizePitfalls, pitfallsFromText } from "@/lib/pitfalls";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
 
 export default function NotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -122,7 +123,11 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     const response = await fetch(`/api/bff/notes/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...note, difficulty: clampDifficulty(note.difficulty) }),
+      body: JSON.stringify({
+        ...note,
+        difficulty: clampDifficulty(note.difficulty),
+        pitfalls: normalizePitfalls(note.pitfalls),
+      }),
     });
     const data = (await response.json()) as PracticeNote | { error?: string };
     setSaving(false);
@@ -232,7 +237,7 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                     onChange={(value) => update("approach", value)}
                   >
                     <FieldLabel kind="approach">{tCommon("fields.approach")}</FieldLabel>
-                    <TextArea rows={5} />
+                    <TextArea rows={5} className="!text-base leading-relaxed" />
                   </TextField>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -261,7 +266,8 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                     value={note.code}
                     onChange={(value) => update("code", value)}
                     language={codeLanguage}
-                    rows={10}
+                    minRows={8}
+                    maxRows={22}
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -303,19 +309,15 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                   <TextField
                     name="pitfalls"
                     value={note.pitfalls.join("\n")}
-                    onChange={(value) =>
-                      update(
-                        "pitfalls",
-                        value
-                          .split("\n")
-                          .map((item) => item.trim())
-                          .filter(Boolean),
-                      )
-                    }
+                    onChange={(value) => update("pitfalls", pitfallsFromText(value))}
                     className="sm:min-h-full"
                   >
                     <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
-                    <TextArea rows={12} className="min-h-[16rem] sm:min-h-[22rem]" />
+                    <TextArea
+                      rows={12}
+                      className="min-h-[16rem] sm:min-h-[22rem] !text-base leading-relaxed"
+                      placeholder={tCommon("placeholders.pitfallsOnePerLine")}
+                    />
                   </TextField>
                 </div>
                 <p className="text-sm text-muted">{t("aiAssistHint")}</p>
