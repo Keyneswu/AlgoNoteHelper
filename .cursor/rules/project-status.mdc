@@ -1,0 +1,40 @@
+---
+description: Where AlgoNoteHelper is today — shipped features, prod deploy, CI status
+alwaysApply: true
+---
+
+# Project status (as of 2026-07)
+
+## Product
+
+- Private algorithm note catalog: structured filters (Path 1) + retrieve → list → answer Ask (Path 2).
+- Stack: Next.js + HeroUI v3 + Better Auth | FastAPI + SQLAlchemy/Alembic | Postgres 17 + pgvector.
+- **MVP is live** at `https://algonote.keyneswu.com` (HTTPS reverse proxy + Cloudflare).
+- Shipped & archived OpenSpec changes (no active change): init, i18n/dark UI, notes retrieval UX, notes list browse, note dedup/merge, ask multi-turn, settings password management.
+- Auth: public signup off; first admin via `/setup`; admins manage users + password reset in Settings; self-service password change exists.
+
+## Production deploy (current practice)
+
+Prefer **manual SSH deploy** until GitHub Actions SSH auth is cleaned up. Do not assume Actions works.
+
+```bash
+ssh ubuntu@<SERVER_IP>
+cd ~/dev/projects/AlgoNoteHelper
+git pull
+docker compose up --build -d
+```
+
+- Server `.env` stays on the host (not in git). Production URLs must be the HTTPS domain (`BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `CORS_ORIGINS`) — not localhost.
+- Named volume `pgdata` **persists** across `up --build`; never use `docker compose down -v` unless wiping data on purpose.
+- `compose up --build` rebuilds `api`/`frontend` images; DB data and server `.env` are reused. Schema/auth migrations are **not** automatic — run Alembic / `pnpm dlx auth@latest migrate` only when needed.
+- Keep real server IPs out of committed files (`.env.example` uses placeholders).
+
+## GitHub Actions
+
+- `.github/workflows/deploy.yml` exists (SSH → pull → compose) but CI deploy is **unreliable** (SSH key hygiene / secret mismatch). Treat as optional; do not block feature work on fixing it unless the user asks.
+
+## Agent guidance
+
+- Assume prod is running and has real user/admin data — avoid destructive DB/volume advice.
+- New features: prefer OpenSpec propose/apply when the user wants structured changes.
+- Deploy help: default to the manual SSH flow above; mention Actions only if asked.
