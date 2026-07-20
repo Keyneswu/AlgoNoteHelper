@@ -1,8 +1,8 @@
 ## 1. Backend: shrink rewrite API
 
-- [ ] 1.1 Remove `custom` and all `pitfall` rewrite policies from schemas and `app/api/rewrite.py`; keep only `statement`+`format_markdown` and `approach`+`organize`
-- [ ] 1.2 Remove generate-approach endpoint, request schema, message builders, and related client helpers
-- [ ] 1.3 Update backend rewrite tests to cover remaining ops and reject removed combinations / generate-approach
+- [x] 1.1 Remove `custom` and all `pitfall` rewrite policies from schemas and `app/api/rewrite.py`; keep only `statement`+`format_markdown` and `approach`+`organize`
+- [x] 1.2 Remove generate-approach endpoint, request schema, message builders, and related client helpers
+- [x] 1.3 Update backend rewrite tests to cover remaining ops and reject removed combinations / generate-approach
 
 ## 2. Pitfall data helpers
 
@@ -24,5 +24,5 @@
 
 ## 5. Verification
 
-- [ ] 5.1 Run focused frontend and backend tests for touched modules
-- [ ] 5.2 Manually smoke note detail/new: Edit-only, Format/Organize + spinner, pitfall cards multiline/layout/≥6 expand, practice history right column, save/discard still work
+- [x] 5.1 Run focused frontend and backend tests for touched modules
+- [x] 5.2 Manually smoke note detail/new: Edit-only, Format/Organize + spinner, pitfall cards multiline/layout/≥6 expand, practice history right column, save/discard still work
