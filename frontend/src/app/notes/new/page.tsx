@@ -17,7 +17,6 @@ import { authClient } from "@/lib/auth-client";
 import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
 import { normalizePitfalls } from "@/lib/pitfalls";
 import { noteToDraft, saveResolveSession } from "@/lib/resolve-store";
-import { requestApproachGeneration } from "@/lib/rewrite";
 import { emptyNote, type NoteDraft, type PracticeNote } from "@/lib/types";
 
 type MarkdownField = "statement" | "approach";
@@ -51,29 +50,6 @@ export default function NewNotePage() {
   function cancelField(field: MarkdownField) {
     update(field, fieldSnapshot);
     setActiveField(null);
-  }
-
-  function statementReadiness(statement: string): "ok" | "empty" | "incomplete" {
-    const text = statement.trim();
-    if (!text) return "empty";
-    if (text.length < 40) return "incomplete";
-    return "ok";
-  }
-
-  async function generateApproach(): Promise<string> {
-    const readiness = statementReadiness(note.statement);
-    if (readiness === "empty") {
-      throw new Error(tDetail("errors.statementRequiredForApproach"));
-    }
-    if (readiness === "incomplete") {
-      throw new Error(tDetail("errors.statementIncompleteForApproach"));
-    }
-    return requestApproachGeneration({
-      title: note.title,
-      statement: note.statement,
-      tags: note.tags,
-      code: note.code,
-    });
   }
 
   async function createNote(draft: NoteDraft) {
@@ -133,9 +109,6 @@ export default function NewNotePage() {
   }
 
   const aiLabels = {
-    custom: tDetail("ai.custom"),
-    instructionPlaceholder: tDetail("ai.instructionPlaceholder"),
-    runCustom: tDetail("ai.runCustom"),
     apply: tDetail("ai.apply"),
     discard: tDetail("ai.discard"),
     undo: tDetail("ai.undo"),
@@ -151,6 +124,8 @@ export default function NewNotePage() {
     complete: tDetail("markdown.complete"),
     cancel: tDetail("markdown.cancel"),
     empty,
+    expand: tDetail("markdown.expand"),
+    collapse: tDetail("markdown.collapse"),
   });
   const pitfallLabels = {
     label: tCommon("fields.pitfalls"),
@@ -239,13 +214,6 @@ export default function NewNotePage() {
                       {
                         operation: "organize",
                         label: tDetail("ai.organizeApproach"),
-                      },
-                    ]}
-                    externalActions={[
-                      {
-                        id: "generate",
-                        label: tDetail("generateApproach"),
-                        run: generateApproach,
                       },
                     ]}
                     onApply={(value) => update("approach", value)}

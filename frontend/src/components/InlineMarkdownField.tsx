@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, type MouseEvent, type ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { FieldLabel, type FieldKind } from "@/components/FieldLabel";
 import { NoteMarkdown } from "@/components/NoteMarkdown";
 
@@ -11,6 +16,8 @@ export type InlineMarkdownLabels = {
   complete: string;
   cancel: string;
   empty: string;
+  expand: string;
+  collapse: string;
 };
 
 type InlineMarkdownFieldProps = {
@@ -28,8 +35,80 @@ type InlineMarkdownFieldProps = {
   isEditDisabled?: boolean;
 };
 
-const INTERACTIVE_SELECTOR =
-  "a,button,input,textarea,select,summary,[role='button'],[contenteditable='true']";
+const COLLAPSE_MAX_VH = 50;
+
+function CollapsibleRenderedMarkdown({
+  content,
+  emptyLabel,
+  expandLabel,
+  collapseLabel,
+}: {
+  content: string;
+  emptyLabel: string;
+  expandLabel: string;
+  collapseLabel: string;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [needsCollapse, setNeedsCollapse] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    function measure() {
+      const node = contentRef.current;
+      if (!node) return;
+      const maxPx = window.innerHeight * (COLLAPSE_MAX_VH / 100);
+      const overflows = node.scrollHeight > maxPx + 1;
+      setNeedsCollapse(overflows);
+      if (!overflows) setExpanded(false);
+    }
+
+    measure();
+    window.addEventListener("resize", measure);
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(measure);
+      observer.observe(el);
+    }
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [content]);
+
+  if (!content.trim()) {
+    return <p className="text-sm text-muted">{emptyLabel}</p>;
+  }
+
+  const collapsed = needsCollapse && !expanded;
+
+  return (
+    <div className="space-y-2">
+      <div
+        ref={contentRef}
+        data-testid="markdown-rendered"
+        className={`overflow-hidden motion-reduce:transition-none ${
+          collapsed ? "max-h-[50vh]" : ""
+        } ${needsCollapse ? "transition-[max-height] duration-200 ease-out" : ""}`}
+      >
+        <NoteMarkdown content={content} />
+      </div>
+      {needsCollapse ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="rounded-md px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={() => setExpanded((prev) => !prev)}
+          >
+            {expanded ? collapseLabel : expandLabel}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function InlineMarkdownField({
   kind,
@@ -46,17 +125,6 @@ export function InlineMarkdownField({
   isEditDisabled = false,
 }: InlineMarkdownFieldProps) {
   const [mode, setMode] = useState<"source" | "preview">("source");
-
-  function activate(event?: MouseEvent<HTMLElement>) {
-    if (isEditDisabled) return;
-    if (event?.target instanceof Element) {
-      const interactive = event.target.closest(INTERACTIVE_SELECTOR);
-      if (interactive && interactive !== event.currentTarget) return;
-    }
-    if (window.getSelection()?.toString()) return;
-    setMode("source");
-    onEdit();
-  }
 
   function complete() {
     setMode("source");
@@ -75,7 +143,7 @@ export function InlineMarkdownField({
         {!isEditing && (
           <button
             type="button"
-            className="rounded-md px-2.5 py-1 text-xs font-semibold text-muted transition hover:bg-accent/10 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-35"
+            className="rounded-md bg-accent-emphasis px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-sm shadow-black/20 transition hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-35"
             disabled={isEditDisabled}
             onClick={() => {
               setMode("source");
@@ -124,11 +192,12 @@ export function InlineMarkdownField({
             />
           ) : (
             <div className="min-h-40 px-4 py-3">
-              {value.trim() ? (
-                <NoteMarkdown content={value} />
-              ) : (
-                <p className="text-sm text-muted">{labels.empty}</p>
-              )}
+              <CollapsibleRenderedMarkdown
+                content={value}
+                emptyLabel={labels.empty}
+                expandLabel={labels.expand}
+                collapseLabel={labels.collapse}
+              />
             </div>
           )}
 
@@ -154,31 +223,15 @@ export function InlineMarkdownField({
         </div>
       ) : (
         <div
-          role="button"
-          tabIndex={isEditDisabled ? -1 : 0}
-          data-testid="markdown-activation"
-          aria-label={`${labels.edit}: ${label}`}
-          aria-disabled={isEditDisabled}
-          className={`group min-h-16 rounded-xl border border-transparent bg-inset/35 px-4 py-3 transition focus-visible:border-accent focus-visible:outline-none ${
-            isEditDisabled
-              ? "cursor-not-allowed opacity-65"
-              : "cursor-text hover:border-accent/30 hover:bg-inset/60"
-          }`}
-          onClick={activate}
-          onKeyDown={(event) => {
-            if (isEditDisabled) return;
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              setMode("source");
-              onEdit();
-            }
-          }}
+          data-testid="markdown-reading"
+          className="min-h-16 rounded-xl border border-transparent bg-inset/35 px-4 py-3"
         >
-          {value.trim() ? (
-            <NoteMarkdown content={value} />
-          ) : (
-            <p className="text-sm text-muted">{labels.empty}</p>
-          )}
+          <CollapsibleRenderedMarkdown
+            content={value}
+            emptyLabel={labels.empty}
+            expandLabel={labels.expand}
+            collapseLabel={labels.collapse}
+          />
         </div>
       )}
     </section>

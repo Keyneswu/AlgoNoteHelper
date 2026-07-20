@@ -141,7 +141,9 @@
         "complete": "Complete",
         "cancel": "Cancel",
         "emptyStatement": "Add a problem statement",
-        "emptyApproach": "Add an approach"
+        "emptyApproach": "Add an approach",
+        "expand": "Show more",
+        "collapse": "Show less"
       },
       "ai": {
         "formatStatement": "Format Markdown",

@@ -1,13 +1,10 @@
 import { useState } from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AiRewritePanel } from "@/components/AiRewritePanel";
 
 const labels = {
-  custom: "Custom rewrite",
-  instructionPlaceholder: "Tell AI what to change",
-  runCustom: "Run custom rewrite",
   apply: "Apply",
   discard: "Discard",
   undo: "Undo AI change",
@@ -67,25 +64,55 @@ describe("AiRewritePanel", () => {
     expect(screen.getByTestId("value")).toHaveTextContent("raw statement");
   });
 
-  it("sends a bounded custom instruction", async () => {
+  it("shows a spinning pending indicator on the active action", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn().mockResolvedValue(okResponse("Structured statement"));
-    vi.stubGlobal("fetch", fetchMock);
+    let resolveResponse!: (response: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockReturnValue(
+        new Promise<Response>((resolve) => {
+          resolveResponse = resolve;
+        }),
+      ),
+    );
+    render(
+      <AiRewritePanel
+        field="statement"
+        value="raw statement"
+        context={{ title: "Example" }}
+        quickActions={[
+          { operation: "format_markdown", label: "Format Markdown" },
+          { operation: "organize", label: "Organize" },
+        ]}
+        onApply={vi.fn()}
+        labels={labels}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Format Markdown" }));
+
+    const formatButton = screen.getByRole("button", { name: /Format Markdown/i });
+    expect(formatButton).toHaveAttribute("aria-busy", "true");
+    expect(formatButton.querySelector(".spinner")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Organize" })).toBeDisabled();
+
+    await act(async () => resolveResponse(okResponse("## Problem")));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Format Markdown" }),
+      ).toHaveAttribute("aria-busy", "false");
+    });
+  });
+
+  it("does not expose custom rewrite controls", () => {
     render(<Harness />);
 
-    await user.click(screen.getByRole("button", { name: "Custom rewrite" }));
-    await user.type(
-      screen.getByPlaceholderText("Tell AI what to change"),
-      "Put assumptions last.",
-    );
     expect(
-      screen.getByPlaceholderText("Tell AI what to change"),
-    ).toHaveAttribute("maxLength", "2000");
-    await user.click(screen.getByRole("button", { name: "Run custom rewrite" }));
-
-    const body = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
-    expect(body.operation).toBe("custom");
-    expect(body.instruction).toBe("Put assumptions last.");
+      screen.queryByRole("button", { name: /custom/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText(/tell ai/i),
+    ).not.toBeInTheDocument();
   });
 
   it("prevents applying a stale response over newer typing", async () => {

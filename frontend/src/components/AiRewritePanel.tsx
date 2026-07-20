@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Spinner } from "@heroui/react";
 import {
   isRewriteCandidateStale,
   requestFieldRewrite,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/rewrite";
 
 type QuickAction = {
-  operation: Exclude<RewriteOperation, "custom">;
+  operation: RewriteOperation;
   label: string;
 };
 
@@ -21,9 +22,6 @@ type ExternalAction = {
 };
 
 export type AiRewriteLabels = {
-  custom: string;
-  instructionPlaceholder: string;
-  runCustom: string;
   apply: string;
   discard: string;
   undo: string;
@@ -53,6 +51,23 @@ type UndoState = {
   applied: string;
 };
 
+function PendingActionLabel({
+  label,
+  pending,
+}: {
+  label: string;
+  pending: boolean;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {pending ? (
+        <Spinner size="sm" color="current" className="size-3.5" />
+      ) : null}
+      {label}
+    </span>
+  );
+}
+
 export function AiRewritePanel({
   field,
   value,
@@ -64,13 +79,11 @@ export function AiRewritePanel({
 }: AiRewritePanelProps) {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
-  const [instruction, setInstruction] = useState("");
-  const [showCustom, setShowCustom] = useState(false);
   const [pendingOperation, setPendingOperation] = useState<string | null>(null);
   const [error, setError] = useState("");
   const requestId = useRef(0);
 
-  async function run(operation: RewriteOperation, customInstruction?: string) {
+  async function run(operation: RewriteOperation) {
     const before = value;
     if (!before.trim()) return;
     const currentRequest = ++requestId.current;
@@ -82,12 +95,10 @@ export function AiRewritePanel({
         field,
         operation,
         text: before,
-        instruction: customInstruction?.trim() || undefined,
         context,
       });
       if (requestId.current !== currentRequest) return;
       setCandidate({ before, after });
-      if (operation === "custom") setShowCustom(false);
     } catch (cause) {
       if (requestId.current !== currentRequest) return;
       setError(cause instanceof Error ? cause.message : labels.errorFallback);
@@ -118,6 +129,7 @@ export function AiRewritePanel({
     ? isRewriteCandidateStale(candidate.before, value)
     : false;
   const canUndo = undo && value === undo.applied;
+  const busy = pendingOperation !== null;
 
   return (
     <div className="space-y-2">
@@ -126,34 +138,32 @@ export function AiRewritePanel({
           <button
             key={action.id}
             type="button"
-            className="rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={pendingOperation !== null}
+            className="inline-flex items-center rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={busy}
+            aria-busy={pendingOperation === action.id}
             onClick={() => void runExternal(action)}
           >
-            {pendingOperation === action.id ? `${action.label}…` : action.label}
+            <PendingActionLabel
+              label={action.label}
+              pending={pendingOperation === action.id}
+            />
           </button>
         ))}
         {quickActions.map((action) => (
           <button
             key={action.operation}
             type="button"
-            className="rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!value.trim() || pendingOperation !== null}
+            className="inline-flex items-center rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!value.trim() || busy}
+            aria-busy={pendingOperation === action.operation}
             onClick={() => void run(action.operation)}
           >
-            {pendingOperation === action.operation
-              ? `${action.label}…`
-              : action.label}
+            <PendingActionLabel
+              label={action.label}
+              pending={pendingOperation === action.operation}
+            />
           </button>
         ))}
-        <button
-          type="button"
-          className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-muted transition hover:border-accent/30 hover:text-foreground disabled:opacity-50"
-          disabled={!value.trim() || pendingOperation !== null}
-          onClick={() => setShowCustom((shown) => !shown)}
-        >
-          {labels.custom}
-        </button>
         {canUndo && (
           <button
             type="button"
@@ -167,29 +177,6 @@ export function AiRewritePanel({
           </button>
         )}
       </div>
-
-      {showCustom && (
-        <div className="rounded-xl border border-accent/25 bg-canvas/70 p-3 shadow-lg shadow-black/20">
-          <textarea
-            rows={3}
-            maxLength={2000}
-            value={instruction}
-            placeholder={labels.instructionPlaceholder}
-            className="block w-full resize-y rounded-lg border border-border bg-inset px-3 py-2 text-sm leading-6 text-foreground outline-none placeholder:text-muted focus:border-accent/50"
-            onChange={(event) => setInstruction(event.target.value)}
-          />
-          <div className="mt-2 flex justify-end">
-            <button
-              type="button"
-              className="rounded-md bg-accent-emphasis px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-40"
-              disabled={!instruction.trim() || pendingOperation !== null}
-              onClick={() => void run("custom", instruction)}
-            >
-              {labels.runCustom}
-            </button>
-          </div>
-        </div>
-      )}
 
       {error && (
         <p role="alert" className="text-xs text-red-300">

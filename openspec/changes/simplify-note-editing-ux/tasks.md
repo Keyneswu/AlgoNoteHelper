@@ -12,9 +12,9 @@
 
 ## 3. Markdown field UX
 
-- [ ] 3.1 Make `InlineMarkdownField` Edit-only (no preview click/keyboard activation); enlarge/emphasize Edit; update component tests
-- [ ] 3.2 Add 50vh collapse + expand for long rendered statement/approach content
-- [ ] 3.3 Add spinning pending indicator to `AiRewritePanel` active actions; remove custom-rewrite UI; update panel tests
+- [x] 3.1 Make `InlineMarkdownField` Edit-only (no preview click/keyboard activation); enlarge/emphasize Edit; update component tests
+- [x] 3.2 Add 50vh collapse + expand for long rendered statement/approach content
+- [x] 3.3 Add spinning pending indicator to `AiRewritePanel` active actions; remove custom-rewrite UI; update panel tests
 
 ## 4. Page layout and copy
 

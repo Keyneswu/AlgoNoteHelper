@@ -141,7 +141,9 @@
         "complete": "完成",
         "cancel": "取消",
         "emptyStatement": "添加题目描述",
-        "emptyApproach": "添加解题思路"
+        "emptyApproach": "添加解题思路",
+        "expand": "展开全文",
+        "collapse": "收起"
       },
       "ai": {
         "formatStatement": "整理为 Markdown",

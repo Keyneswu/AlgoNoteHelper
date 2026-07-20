@@ -20,7 +20,6 @@ import { authClient } from "@/lib/auth-client";
 import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
 import { clonePracticeNote, noteDraftIsDirty } from "@/lib/note-draft";
 import { normalizePitfalls } from "@/lib/pitfalls";
-import { requestApproachGeneration } from "@/lib/rewrite";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
 
 type MarkdownField = "statement" | "approach";
@@ -71,30 +70,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
   function cancelField(field: MarkdownField) {
     update(field, fieldSnapshot);
     setActiveField(null);
-  }
-
-  function statementReadiness(statement: string): "ok" | "empty" | "incomplete" {
-    const text = statement.trim();
-    if (!text) return "empty";
-    if (text.length < 40) return "incomplete";
-    return "ok";
-  }
-
-  async function generateApproach(): Promise<string> {
-    if (!note) throw new Error(t("errors.couldNotGenerateApproach"));
-    const readiness = statementReadiness(note.statement);
-    if (readiness === "empty") {
-      throw new Error(t("errors.statementRequiredForApproach"));
-    }
-    if (readiness === "incomplete") {
-      throw new Error(t("errors.statementIncompleteForApproach"));
-    }
-    return requestApproachGeneration({
-      title: note.title,
-      statement: note.statement,
-      tags: note.tags,
-      code: note.code,
-    });
   }
 
   async function saveNote(andReturn: boolean) {
@@ -148,9 +123,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
 
   const dirty = noteDraftIsDirty(savedNote, note);
   const aiLabels = {
-    custom: t("ai.custom"),
-    instructionPlaceholder: t("ai.instructionPlaceholder"),
-    runCustom: t("ai.runCustom"),
     apply: t("ai.apply"),
     discard: t("ai.discard"),
     undo: t("ai.undo"),
@@ -166,6 +138,8 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     complete: t("markdown.complete"),
     cancel: t("markdown.cancel"),
     empty,
+    expand: t("markdown.expand"),
+    collapse: t("markdown.collapse"),
   });
   const pitfallLabels = {
     label: tCommon("fields.pitfalls"),
@@ -265,13 +239,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                         {
                           operation: "organize",
                           label: t("ai.organizeApproach"),
-                        },
-                      ]}
-                      externalActions={[
-                        {
-                          id: "generate",
-                          label: t("generateApproach"),
-                          run: generateApproach,
                         },
                       ]}
                       onApply={(value) => update("approach", value)}

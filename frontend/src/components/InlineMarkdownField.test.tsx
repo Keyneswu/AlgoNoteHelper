@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { InlineMarkdownField } from "@/components/InlineMarkdownField";
 
 const labels = {
@@ -10,6 +10,8 @@ const labels = {
   complete: "Complete",
   cancel: "Cancel",
   empty: "Add content",
+  expand: "Show more",
+  collapse: "Show less",
 };
 
 function renderField(
@@ -31,26 +33,34 @@ function renderField(
 }
 
 describe("InlineMarkdownField", () => {
-  it("renders Markdown by default and activates from a non-interactive area", async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("renders Markdown by default and activates only via Edit", async () => {
     const user = userEvent.setup();
     const { props } = renderField();
 
     expect(screen.getByRole("heading", { name: "Goal" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("markdown-activation")).not.toBeInTheDocument();
 
-    await user.click(screen.getByTestId("markdown-activation"));
+    await user.click(screen.getByTestId("markdown-reading"));
+    expect(props.onEdit).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(props.onEdit).toHaveBeenCalledOnce();
   });
 
-  it("activates when ordinary rendered Markdown descendants are clicked", async () => {
+  it("does not activate when rendered Markdown descendants are clicked", async () => {
     const user = userEvent.setup();
     const { props } = renderField();
 
     await user.click(screen.getByRole("heading", { name: "Goal" }));
-    expect(props.onEdit).toHaveBeenCalledOnce();
+    expect(props.onEdit).not.toHaveBeenCalled();
   });
 
-  it("does not activate when a rendered link control is clicked", async () => {
+  it("keeps rendered link interaction without entering edit mode", async () => {
     const user = userEvent.setup();
     const { props } = renderField();
 
@@ -58,21 +68,12 @@ describe("InlineMarkdownField", () => {
     expect(props.onEdit).not.toHaveBeenCalled();
   });
 
-  it("does not activate while text is selected", () => {
+  it("does not activate from keyboard on the reading surface", () => {
     const { props } = renderField();
-    vi.spyOn(window, "getSelection").mockReturnValue({
-      toString: () => "selected text",
-    } as Selection);
 
-    fireEvent.click(screen.getByTestId("markdown-activation"));
+    fireEvent.keyDown(screen.getByTestId("markdown-reading"), { key: "Enter" });
+    fireEvent.keyDown(screen.getByTestId("markdown-reading"), { key: " " });
     expect(props.onEdit).not.toHaveBeenCalled();
-  });
-
-  it("supports keyboard activation", () => {
-    const { props } = renderField();
-
-    fireEvent.keyDown(screen.getByTestId("markdown-activation"), { key: "Enter" });
-    expect(props.onEdit).toHaveBeenCalledOnce();
   });
 
   it("can be locked while another local editor owns an unsaved buffer", async () => {
@@ -80,8 +81,7 @@ describe("InlineMarkdownField", () => {
     const { props } = renderField({ isEditDisabled: true });
 
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
-    await user.click(screen.getByTestId("markdown-activation"));
-    fireEvent.keyDown(screen.getByTestId("markdown-activation"), { key: "Enter" });
+    await user.click(screen.getByTestId("markdown-reading"));
     expect(props.onEdit).not.toHaveBeenCalled();
   });
 
@@ -111,5 +111,56 @@ describe("InlineMarkdownField", () => {
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("collapses tall rendered content behind an expand control", async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 800,
+    });
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get() {
+        return 600;
+      },
+    });
+
+    renderField({
+      value: Array.from({ length: 40 }, (_, i) => `Line ${i + 1}`).join("\n\n"),
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("markdown-rendered")).toHaveClass("max-h-[50vh]");
+    expect(screen.getByRole("button", { name: "Show more" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show more" }));
+    expect(screen.getByTestId("markdown-rendered")).not.toHaveClass("max-h-[50vh]");
+    expect(screen.getByRole("button", { name: "Show less" })).toBeInTheDocument();
+  });
+
+  it("does not show a collapse control for short content", async () => {
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 800,
+    });
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get() {
+        return 120;
+      },
+    });
+
+    renderField({ value: "Short statement" });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("markdown-rendered")).not.toHaveClass("max-h-[50vh]");
   });
 });
