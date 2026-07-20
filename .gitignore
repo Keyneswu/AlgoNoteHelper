@@ -39,3 +39,6 @@ frontend/.pnpm-store/
 *.log
 *.pem
 *.key
+
+# Git worktrees (local isolation)
+.worktrees/
