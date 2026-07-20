@@ -112,8 +112,11 @@ export default function AskPage() {
     try {
       let { items } = await listAskSessions();
       if (items.length === 0) {
-        await createAskSession({ title: t("sessions.newChat") });
+        const created = await createAskSession({ title: t("sessions.newChat") });
         ({ items } = await listAskSessions());
+        if (items.length === 0) {
+          items = [toListItem(created)];
+        }
       }
       setSessions(items);
 
@@ -121,7 +124,10 @@ export default function AskPage() {
       const preferId =
         cached != null && items.some((s) => s.id === cached)
           ? cached
-          : items[0]!.id;
+          : items[0]?.id;
+      if (preferId == null) {
+        throw new Error(t("sessions.errorLoad"));
+      }
       const detail = await getAskSession(preferId);
       applySessionDetail(detail);
       setRailMode("sessions");
@@ -160,7 +166,10 @@ export default function AskPage() {
     setError("");
     try {
       const created = await createAskSession({ title: t("sessions.newChat") });
-      const { items } = await listAskSessions();
+      let { items } = await listAskSessions();
+      if (!items.some((s) => s.id === created.id)) {
+        items = upsertSessionInList(items, toListItem(created));
+      }
       setSessions(items);
       setActiveSessionIdState(created.id);
       setMessages([]);
@@ -180,13 +189,19 @@ export default function AskPage() {
         await deleteAskSession(id);
         let { items } = await listAskSessions();
         if (items.length === 0) {
-          await createAskSession({ title: t("sessions.newChat") });
+          const created = await createAskSession({ title: t("sessions.newChat") });
           ({ items } = await listAskSessions());
+          if (items.length === 0) {
+            items = [toListItem(created)];
+          }
         }
         setSessions(items);
 
         if (id === activeSessionIdRef.current) {
-          const nextId = items[0]!.id;
+          const nextId = items[0]?.id;
+          if (nextId == null) {
+            throw new Error(t("sessions.errorLoad"));
+          }
           const detail = await getAskSession(nextId);
           applySessionDetail(detail);
           setRailMode("sessions");

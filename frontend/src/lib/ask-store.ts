@@ -40,6 +40,7 @@ export function mergeContextNotes(
   const byId = new Map(existing.map((n) => [n.id, n]));
   const next = [...existing];
   for (const note of added) {
+    if (!note || typeof note.id !== "number") continue;
     if (!byId.has(note.id)) {
       byId.set(note.id, note);
       next.push(note);
