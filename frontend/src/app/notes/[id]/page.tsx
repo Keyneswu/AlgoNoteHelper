@@ -256,6 +256,11 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                     maxRows={22}
                   />
                 </div>
+                <PitfallBlocks
+                  value={note.pitfalls}
+                  onChange={(value) => update("pitfalls", value)}
+                  labels={pitfallLabels}
+                />
                 <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
                   <div className="space-y-5">
                     <TagPicker value={note.tags} onChange={(tags) => update("tags", tags)} />
@@ -267,15 +272,10 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                         showLegend={false}
                       />
                     </div>
-                    <PracticeHistory
-                      dates={note.review_dates ?? []}
-                      onChange={(dates) => update("review_dates", dates)}
-                    />
                   </div>
-                  <PitfallBlocks
-                    value={note.pitfalls}
-                    onChange={(value) => update("pitfalls", value)}
-                    labels={pitfallLabels}
+                  <PracticeHistory
+                    dates={note.review_dates ?? []}
+                    onChange={(dates) => update("review_dates", dates)}
                   />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">

@@ -131,28 +131,20 @@
     "detail": {
       "headingFallback": "编辑笔记",
       "loading": "正在加载笔记…",
-      "rewriteWithAi": "AI 改写",
-      "generateApproach": "AI 生成思路",
-      "reverse": "还原",
       "markdown": {
-        "edit": "编辑 Markdown",
+        "edit": "编辑",
         "source": "源码",
         "preview": "预览",
         "complete": "完成",
         "cancel": "取消",
         "emptyStatement": "添加题目描述",
         "emptyApproach": "添加解题思路",
-        "expand": "展开全文",
+        "expand": "展开",
         "collapse": "收起"
       },
       "ai": {
-        "formatStatement": "整理为 Markdown",
-        "organizeApproach": "整理现有思路",
-        "clarifyPitfall": "解释清楚",
-        "shortenPitfall": "精简",
-        "custom": "按要求改写",
-        "instructionPlaceholder": "告诉 AI 这个字段需要怎样调整",
-        "runCustom": "生成候选版本",
+        "formatStatement": "格式化",
+        "organizeApproach": "整理",
         "apply": "应用到草稿",
         "discard": "丢弃",
         "undo": "撤销 AI 修改",
@@ -162,23 +154,17 @@
         "errorFallback": "无法改写该字段"
       },
       "pitfallBlocks": {
-        "addPlaceholder": "添加一条易错点，按 Enter 保存",
         "add": "添加",
-        "edit": "编辑",
         "remove": "删除",
-        "complete": "完成",
-        "cancel": "取消",
         "empty": "还没有易错点。先记下最可能再犯的那个错误。",
-        "expand": "显示更多易错点",
-        "collapse": "收起易错点"
+        "expand": "展开",
+        "collapse": "收起"
       },
       "dirty": {
         "message": "这篇笔记有尚未保存的修改。",
         "save": "保存修改",
         "discard": "放弃修改"
       },
-      "aiAssistHint": "AI 只会更新编辑器内容。生成思路需要完整题干；可用「还原」恢复到上次保存的文本，确认后请手动保存。",
-      "aiRewriteHint": "AI 改写只会更新编辑器内容；可用「还原」恢复到上次保存的文本，确认后请手动保存。",
       "save": "保存",
       "saveAndReturn": "保存并返回",
       "delete": "删除笔记",
@@ -195,9 +181,6 @@
       "errors": {
         "couldNotLoad": "无法加载笔记",
         "couldNotRewrite": "无法改写该字段",
-        "couldNotGenerateApproach": "无法生成解题思路",
-        "statementRequiredForApproach": "请先填写题干，再生成解题思路。",
-        "statementIncompleteForApproach": "题干看起来还不完整。请补充输入、目标、约束等信息后再生成。",
         "couldNotSave": "无法保存笔记",
         "couldNotDelete": "无法删除笔记"
       }

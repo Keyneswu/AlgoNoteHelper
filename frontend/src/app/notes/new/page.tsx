@@ -231,23 +231,21 @@ export default function NewNotePage() {
                   maxRows={22}
                 />
               </div>
-              <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
-                <div className="space-y-5">
-                  <TagPicker value={note.tags} onChange={(tags) => update("tags", tags)} />
-                  <div className="space-y-2">
-                    <FieldLabel kind="difficulty">{tCommon("fields.difficulty")}</FieldLabel>
-                    <DifficultyPicker
-                      value={note.difficulty}
-                      onChange={(value: DifficultyLevel) => update("difficulty", value)}
-                      showLegend={false}
-                    />
-                  </div>
+              <PitfallBlocks
+                value={note.pitfalls}
+                onChange={(value) => update("pitfalls", value)}
+                labels={pitfallLabels}
+              />
+              <div className="space-y-5 sm:max-w-md">
+                <TagPicker value={note.tags} onChange={(tags) => update("tags", tags)} />
+                <div className="space-y-2">
+                  <FieldLabel kind="difficulty">{tCommon("fields.difficulty")}</FieldLabel>
+                  <DifficultyPicker
+                    value={note.difficulty}
+                    onChange={(value: DifficultyLevel) => update("difficulty", value)}
+                    showLegend={false}
+                  />
                 </div>
-                <PitfallBlocks
-                  value={note.pitfalls}
-                  onChange={(value) => update("pitfalls", value)}
-                  labels={pitfallLabels}
-                />
               </div>
               {error && <p className="text-sm text-red-400">{error}</p>}
               <Button type="submit" isPending={saving}>

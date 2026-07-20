@@ -18,9 +18,9 @@
 
 ## 4. Page layout and copy
 
-- [ ] 4.1 Reorder note detail and new-note pages: code → pitfalls → meta (tags+difficulty | practice history); wire Format / Organize only; drop generateApproach and pitfall AI
-- [ ] 4.2 Shorten i18n labels (Format, Edit, organize, expand/collapse pitfalls, remove unused AI strings) in `en.json` and `zh-CN.json`
-- [ ] 4.3 Confirm notes-list search (and other HeroUI async buttons) still show clear pending state; align if needed
+- [x] 4.1 Reorder note detail and new-note pages: code → pitfalls → meta (tags+difficulty | practice history); wire Format / Organize only; drop generateApproach and pitfall AI
+- [x] 4.2 Shorten i18n labels (Format, Edit, organize, expand/collapse pitfalls, remove unused AI strings) in `en.json` and `zh-CN.json`
+- [x] 4.3 Confirm notes-list search (and other HeroUI async buttons) still show clear pending state; align if needed
 
 ## 5. Verification
 
