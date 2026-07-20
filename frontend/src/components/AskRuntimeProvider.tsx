@@ -72,6 +72,8 @@ type AskRuntimeProviderProps = {
   initialMessages: AskChatMessage[];
   onNotesAdded: (notes: PracticeNote[]) => void;
   onTranscript: (messages: AskChatMessage[]) => void;
+  /** Called when the user sends a question (adapter run starts). */
+  onRunStart?: () => void;
 };
 
 export function AskRuntimeProvider({
@@ -81,18 +83,21 @@ export function AskRuntimeProvider({
   initialMessages,
   onNotesAdded,
   onTranscript,
+  onRunStart,
 }: AskRuntimeProviderProps) {
   const filtersRef = useRef(filters);
   const contextNotesRef = useRef(contextNotes);
   const onNotesAddedRef = useRef(onNotesAdded);
   const onTranscriptRef = useRef(onTranscript);
+  const onRunStartRef = useRef(onRunStart);
 
   useEffect(() => {
     filtersRef.current = filters;
     contextNotesRef.current = contextNotes;
     onNotesAddedRef.current = onNotesAdded;
     onTranscriptRef.current = onTranscript;
-  }, [contextNotes, filters, onNotesAdded, onTranscript]);
+    onRunStartRef.current = onRunStart;
+  }, [contextNotes, filters, onNotesAdded, onRunStart, onTranscript]);
 
   const adapter: ChatModelAdapter = useMemo(
     () => ({
@@ -101,6 +106,8 @@ export function AskRuntimeProvider({
         const last = messages[messages.length - 1]!;
         const question = extractText(last);
         if (!question) return;
+
+        onRunStartRef.current?.();
 
         const history = toHistory(messages.slice(0, -1));
         const { tags, difficulty } = filtersRef.current;

@@ -1,3 +1,3 @@
-from app.models.entities import PracticeNote, UserLlmConfig
+from app.models.entities import AskChatMessage, AskChatSession, PracticeNote, UserLlmConfig
 
-__all__ = ["PracticeNote", "UserLlmConfig"]
+__all__ = ["AskChatMessage", "AskChatSession", "PracticeNote", "UserLlmConfig"]

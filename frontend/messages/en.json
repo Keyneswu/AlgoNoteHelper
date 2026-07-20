@@ -253,6 +253,20 @@
       "empty": "No notes in context yet. Ask a question to retrieve some.",
       "remove": "Remove from context"
     },
+    "sessions": {
+      "railSessions": "Sessions",
+      "railNotes": "Notes",
+      "newChat": "New chat",
+      "empty": "No conversations yet.",
+      "loading": "Loading sessions…",
+      "deleteHeading": "Delete conversation?",
+      "deleteConfirm": "This permanently deletes the conversation and its messages. This cannot be undone.",
+      "deleteConfirmAction": "Delete",
+      "deleteCancel": "Cancel",
+      "errorLoad": "Could not load sessions",
+      "errorSave": "Could not save conversation",
+      "errorDelete": "Could not delete conversation"
+    },
     "errors": {
       "couldNotAsk": "Could not ask your notes"
     }

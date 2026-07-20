@@ -10,6 +10,7 @@ import type { PracticeNote } from "@/lib/types";
 type AskContextBarProps = {
   notes: PracticeNote[];
   onRemove: (noteId: number) => void;
+  /** @deprecated New chat lives in Sessions list; kept optional for compatibility. */
   onNewSession?: () => void;
   /** `rail` = left companion column; `mobile` = compact horizontal strip */
   variant?: "rail" | "mobile";
@@ -18,7 +19,6 @@ type AskContextBarProps = {
 export function AskContextBar({
   notes,
   onRemove,
-  onNewSession,
   variant = "rail",
 }: AskContextBarProps) {
   const t = useTranslations("ask");
@@ -73,11 +73,6 @@ export function AskContextBar({
               {t("contextBar.count", { count: notes.length })}
             </span>
           </p>
-          {onNewSession ? (
-            <Button size="sm" variant="tertiary" className="shrink-0" onPress={onNewSession}>
-              {t("newSession")}
-            </Button>
-          ) : null}
         </div>
         <p className="text-xs leading-relaxed text-muted">{t("contextBar.hintShort")}</p>
       </div>

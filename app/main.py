@@ -3,10 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, llm_config, notes, retrieval, rewrite
+from app.api import ask_sessions, health, llm_config, notes, retrieval, rewrite
 from app.core.config import get_settings
 from app.db.session import Base, engine
-from app.models import PracticeNote, UserLlmConfig  # noqa: F401 — register metadata
+from app.models import (  # noqa: F401 — register metadata
+    AskChatMessage,
+    AskChatSession,
+    PracticeNote,
+    UserLlmConfig,
+)
 
 
 @asynccontextmanager
@@ -33,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(notes.router, prefix="/api")
     app.include_router(llm_config.router, prefix="/api")
     app.include_router(rewrite.router, prefix="/api")
+    app.include_router(ask_sessions.router, prefix="/api")
     app.include_router(retrieval.router, prefix="/api")
     return app
 

@@ -253,6 +253,20 @@
       "empty": "上下文还是空的。先问一个问题，系统会检索相关笔记。",
       "remove": "从上下文移除"
     },
+    "sessions": {
+      "railSessions": "会话",
+      "railNotes": "笔记",
+      "newChat": "新对话",
+      "empty": "还没有对话。",
+      "loading": "加载会话中…",
+      "deleteHeading": "删除对话？",
+      "deleteConfirm": "将永久删除该对话及其消息，此操作无法撤销。",
+      "deleteConfirmAction": "删除",
+      "deleteCancel": "取消",
+      "errorLoad": "无法加载会话",
+      "errorSave": "无法保存对话",
+      "errorDelete": "无法删除对话"
+    },
     "errors": {
       "couldNotAsk": "无法向笔记提问"
     }
