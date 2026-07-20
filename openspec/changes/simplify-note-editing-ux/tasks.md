@@ -6,9 +6,9 @@
 
 ## 2. Pitfall data helpers
 
-- [ ] 2.1 Change pitfall normalize/replace helpers so internal newlines stay in one item (trim + drop blanks only); update `pitfalls` unit tests
-- [ ] 2.2 Rebuild `PitfallBlocks` as a full-width 2-column (1-column mobile) amber card grid of always-on multiline textareas with bottom Remove, section Add, and expand-when-≥6; remove AI `actions` slot
-- [ ] 2.3 Update `PitfallBlocks` tests for multiline keep, add/remove, and ≥6 expand behavior
+- [x] 2.1 Change pitfall normalize/replace helpers so internal newlines stay in one item (trim + drop blanks only); update `pitfalls` unit tests
+- [x] 2.2 Rebuild `PitfallBlocks` as a full-width 2-column (1-column mobile) amber card grid of always-on multiline textareas with bottom Remove, section Add, and expand-when-≥6; remove AI `actions` slot
+- [x] 2.3 Update `PitfallBlocks` tests for multiline keep, add/remove, and ≥6 expand behavior
 
 ## 3. Markdown field UX
 

@@ -3,7 +3,7 @@ export function pitfallsFromText(value: string): string[] {
   return value.split("\n");
 }
 
-/** Split composer or pasted text into non-empty, trimmed single-line items. */
+/** Split import/resolve composer text into non-empty, trimmed one-line items. */
 export function splitPitfallInput(value: string): string[] {
   return value
     .split(/\r?\n/)
@@ -11,22 +11,18 @@ export function splitPitfallInput(value: string): string[] {
     .filter(Boolean);
 }
 
-/** Normalize pitfalls for API/persistence: split embedded lines, trim, and drop blanks. */
+/** Normalize pitfalls for API/persistence: trim and drop blanks; keep internal newlines. */
 export function normalizePitfalls(lines: string[]): string[] {
-  return lines.flatMap(splitPitfallInput);
+  return lines.map((line) => line.trim()).filter(Boolean);
 }
 
-/** Replace one item while preserving order; multiline input expands in place. */
+/** Replace one item while preserving order; value may contain internal newlines. */
 export function replacePitfall(
   lines: string[],
   index: number,
   value: string,
 ): string[] {
-  return [
-    ...lines.slice(0, index),
-    ...splitPitfallInput(value),
-    ...lines.slice(index + 1),
-  ];
+  return [...lines.slice(0, index), value, ...lines.slice(index + 1)];
 }
 
 /** Remove one item while preserving the remaining order. */

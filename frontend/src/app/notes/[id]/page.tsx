@@ -36,8 +36,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
   const [savedNote, setSavedNote] = useState<PracticeNote | null>(null);
   const [activeField, setActiveField] = useState<MarkdownField | null>(null);
   const [fieldSnapshot, setFieldSnapshot] = useState("");
-  const [activePitfall, setActivePitfall] = useState<number | null>(null);
-  const [pitfallSnapshot, setPitfallSnapshot] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -66,7 +64,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
 
   function beginField(field: MarkdownField) {
     if (!note) return;
-    setActivePitfall(null);
     setFieldSnapshot(note[field]);
     setActiveField(field);
   }
@@ -74,13 +71,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
   function cancelField(field: MarkdownField) {
     update(field, fieldSnapshot);
     setActiveField(null);
-  }
-
-  function beginPitfall(index: number) {
-    if (!note) return;
-    setActiveField(null);
-    setPitfallSnapshot([...note.pitfalls]);
-    setActivePitfall(index);
   }
 
   function statementReadiness(statement: string): "ok" | "empty" | "incomplete" {
@@ -127,7 +117,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     setNote(clonePracticeNote(saved));
     setSavedNote(clonePracticeNote(saved));
     setActiveField(null);
-    setActivePitfall(null);
     if (andReturn) router.push("/notes");
   }
 
@@ -154,7 +143,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     if (!savedNote) return;
     setNote(clonePracticeNote(savedNote));
     setActiveField(null);
-    setActivePitfall(null);
     setError("");
   }
 
@@ -181,13 +169,11 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
   });
   const pitfallLabels = {
     label: tCommon("fields.pitfalls"),
-    addPlaceholder: t("pitfallBlocks.addPlaceholder"),
     add: t("pitfallBlocks.add"),
-    edit: t("pitfallBlocks.edit"),
     remove: t("pitfallBlocks.remove"),
-    complete: t("pitfallBlocks.complete"),
-    cancel: t("pitfallBlocks.cancel"),
     empty: t("pitfallBlocks.empty"),
+    expand: t("pitfallBlocks.expand"),
+    collapse: t("pitfallBlocks.collapse"),
   };
 
   if (isPending || !session) return null;
@@ -234,7 +220,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                   label={tCommon("fields.problemStatement")}
                   value={note.statement}
                   isEditing={activeField === "statement"}
-                  isEditDisabled={activePitfall !== null}
                   onEdit={() => beginField("statement")}
                   onChange={(value) => update("statement", value)}
                   onComplete={() => setActiveField(null)}
@@ -261,7 +246,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                   label={tCommon("fields.approach")}
                   value={note.approach}
                   isEditing={activeField === "approach"}
-                  isEditDisabled={activePitfall !== null}
                   onEdit={() => beginField("approach")}
                   onChange={(value) => update("approach", value)}
                   onComplete={() => setActiveField(null)}
@@ -324,38 +308,7 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                   <PitfallBlocks
                     value={note.pitfalls}
                     onChange={(value) => update("pitfalls", value)}
-                    activeIndex={activePitfall}
-                    onBeginEdit={beginPitfall}
-                    onCompleteEdit={() => setActivePitfall(null)}
-                    onCancelEdit={() => {
-                      update("pitfalls", pitfallSnapshot);
-                      setActivePitfall(null);
-                    }}
                     labels={pitfallLabels}
-                    actions={(index, draftValue, setDraftValue) => (
-                      <AiRewritePanel
-                        key={index}
-                        field="pitfall"
-                        value={draftValue}
-                        context={{
-                          title: note.title,
-                          statement: note.statement,
-                          approach: note.approach,
-                        }}
-                        quickActions={[
-                          {
-                            operation: "clarify",
-                            label: t("ai.clarifyPitfall"),
-                          },
-                          {
-                            operation: "shorten",
-                            label: t("ai.shortenPitfall"),
-                          },
-                        ]}
-                        onApply={setDraftValue}
-                        labels={aiLabels}
-                      />
-                    )}
                   />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">

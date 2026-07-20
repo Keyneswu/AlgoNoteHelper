@@ -6,8 +6,8 @@ import {
   splitPitfallInput,
 } from "@/lib/pitfalls";
 
-describe("single-line pitfall helpers", () => {
-  it("splits pasted lines, trims them, and drops blanks", () => {
+describe("multiline pitfall helpers", () => {
+  it("splits pasted lines, trims them, and drops blanks for import-style textareas", () => {
     expect(splitPitfallInput(" first \n\n`second`\r\n third ")).toEqual([
       "first",
       "`second`",
@@ -15,19 +15,17 @@ describe("single-line pitfall helpers", () => {
     ]);
   });
 
-  it("normalizes embedded newlines into independent ordered items", () => {
+  it("normalizes by trimming and dropping blanks without splitting on newlines", () => {
     expect(normalizePitfalls(["first\nsecond", " ", "third"])).toEqual([
-      "first",
-      "second",
+      "first\nsecond",
       "third",
     ]);
   });
 
-  it("replaces one item with one or more normalized lines", () => {
+  it("replaces one item while keeping internal newlines in that item", () => {
     expect(replacePitfall(["one", "two", "three"], 1, "updated\nextra")).toEqual([
       "one",
-      "updated",
-      "extra",
+      "updated\nextra",
       "three",
     ]);
   });

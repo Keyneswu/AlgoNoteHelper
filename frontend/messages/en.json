@@ -166,7 +166,9 @@
         "remove": "Remove",
         "complete": "Complete",
         "cancel": "Cancel",
-        "empty": "No pitfalls yet. Add the mistake you are most likely to repeat."
+        "empty": "No pitfalls yet. Add the mistake you are most likely to repeat.",
+        "expand": "Show more pitfalls",
+        "collapse": "Show fewer pitfalls"
       },
       "dirty": {
         "message": "You have unsaved note changes.",

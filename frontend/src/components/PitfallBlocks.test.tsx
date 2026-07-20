@@ -1,137 +1,68 @@
-import { useRef, useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { PitfallBlocks } from "@/components/PitfallBlocks";
 
 const labels = {
   label: "Pitfalls",
-  addPlaceholder: "Add a pitfall",
   add: "Add",
-  edit: "Edit",
   remove: "Remove",
-  complete: "Complete",
-  cancel: "Cancel",
   empty: "No pitfalls yet",
+  expand: "Show more pitfalls",
+  collapse: "Show fewer pitfalls",
 };
 
-function Harness({ initial = ["Keep `dp[0]`.", "Check bounds."] }: { initial?: string[] }) {
+function Harness({
+  initial = ["Keep `dp[0]`.", "Check bounds."],
+}: {
+  initial?: string[];
+}) {
   const [value, setValue] = useState(initial);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const snapshot = useRef<string[]>(initial);
 
   return (
     <>
-      <PitfallBlocks
-        value={value}
-        onChange={setValue}
-        activeIndex={activeIndex}
-        onBeginEdit={(index) => {
-          snapshot.current = value;
-          setActiveIndex(index);
-        }}
-        onCompleteEdit={() => setActiveIndex(null)}
-        onCancelEdit={() => {
-          setValue(snapshot.current);
-          setActiveIndex(null);
-        }}
-        labels={labels}
-      />
+      <PitfallBlocks value={value} onChange={setValue} labels={labels} />
       <output data-testid="pitfall-value">{JSON.stringify(value)}</output>
     </>
   );
 }
 
 describe("PitfallBlocks", () => {
-  it("renders each item as an independent inline Markdown block", () => {
+  it("renders always-on multiline textareas for each item", () => {
     render(<Harness />);
 
-    expect(screen.getByText("dp[0]")).toHaveAttribute("data-streamdown", "inline-code");
-    expect(screen.getAllByTestId("pitfall-block")).toHaveLength(2);
+    const cards = screen.getAllByTestId("pitfall-block");
+    expect(cards).toHaveLength(2);
+    expect(within(cards[0]!).getByRole("textbox")).toHaveValue("Keep `dp[0]`.");
+    expect(within(cards[1]!).getByRole("textbox")).toHaveValue("Check bounds.");
   });
 
-  it("adds a trimmed item with Enter", async () => {
+  it("keeps Enter as a newline inside one item instead of adding another", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={["first"]} />);
+
+    const textarea = screen.getByRole("textbox");
+    await user.click(textarea);
+    await user.keyboard("{End}{Enter}second");
+
+    expect(screen.getByTestId("pitfall-value")).toHaveTextContent(
+      JSON.stringify(["first\nsecond"]),
+    );
+    expect(screen.getAllByTestId("pitfall-block")).toHaveLength(1);
+  });
+
+  it("adds an empty card when Add is pressed", async () => {
     const user = userEvent.setup();
     render(<Harness initial={[]} />);
 
-    const composer = screen.getByPlaceholderText("Add a pitfall");
-    await user.type(composer, "  New warning  {Enter}");
+    expect(screen.getByText("No pitfalls yet")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add" }));
 
+    expect(screen.getAllByTestId("pitfall-block")).toHaveLength(1);
+    expect(screen.getByRole("textbox")).toHaveValue("");
     expect(screen.getByTestId("pitfall-value")).toHaveTextContent(
-      JSON.stringify(["New warning"]),
-    );
-  });
-
-  it("splits multiline paste into ordered items", () => {
-    render(<Harness initial={[]} />);
-    const composer = screen.getByPlaceholderText("Add a pitfall");
-
-    fireEvent.paste(composer, {
-      clipboardData: { getData: () => "first\n\n second\nthird" },
-    });
-
-    expect(screen.getByTestId("pitfall-value")).toHaveTextContent(
-      JSON.stringify(["first", "second", "third"]),
-    );
-  });
-
-  it("edits and completes one selected item", async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-
-    await user.click(screen.getAllByRole("button", { name: "Edit" })[1]!);
-    fireEvent.change(screen.getByRole("textbox", { name: "Edit pitfall 2" }), {
-      target: { value: "Check both bounds." },
-    });
-    await user.click(screen.getByRole("button", { name: "Complete" }));
-
-    expect(screen.getByTestId("pitfall-value")).toHaveTextContent(
-      JSON.stringify(["Keep `dp[0]`.", "Check both bounds."]),
-    );
-  });
-
-  it("preserves spaces while typing before normalizing on Complete", async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-
-    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]!);
-    const editor = screen.getByRole("textbox", { name: "Edit pitfall 1" });
-    await user.clear(editor);
-    await user.type(editor, "multi word warning");
-
-    expect(editor).toHaveValue("multi word warning");
-    expect(screen.getByTestId("pitfall-value")).toHaveTextContent(
-      JSON.stringify(["Keep `dp[0]`.", "Check bounds."]),
-    );
-
-    await user.click(screen.getByRole("button", { name: "Complete" }));
-    expect(screen.getByTestId("pitfall-value")).toHaveTextContent(
-      JSON.stringify(["multi word warning", "Check bounds."]),
-    );
-  });
-
-  it("locks sibling controls until the active edit is completed or cancelled", async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-
-    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]!);
-
-    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();
-  });
-
-  it("cancels one item edit back to its snapshot", async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-
-    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]!);
-    fireEvent.change(screen.getByRole("textbox", { name: "Edit pitfall 1" }), {
-      target: { value: "Changed" },
-    });
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-
-    expect(screen.getByTestId("pitfall-value")).toHaveTextContent(
-      JSON.stringify(["Keep `dp[0]`.", "Check bounds."]),
+      JSON.stringify([""]),
     );
   });
 
@@ -146,19 +77,32 @@ describe("PitfallBlocks", () => {
     );
   });
 
-  it("preserves composer text around a multiline paste", async () => {
+  it("shows the first six items and expands the rest when there are more than six", async () => {
     const user = userEvent.setup();
-    render(<Harness initial={[]} />);
-    const composer = screen.getByPlaceholderText("Add a pitfall");
-    await user.type(composer, "prefix suffix");
-    (composer as HTMLTextAreaElement).setSelectionRange(7, 7);
+    const initial = Array.from({ length: 8 }, (_, i) => `Pitfall ${i + 1}`);
+    render(<Harness initial={initial} />);
 
-    fireEvent.paste(composer, {
-      clipboardData: { getData: () => "one\ntwo " },
+    expect(screen.getAllByTestId("pitfall-block")).toHaveLength(6);
+    expect(screen.queryByDisplayValue("Pitfall 7")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show more pitfalls" }));
+
+    expect(screen.getAllByTestId("pitfall-block")).toHaveLength(8);
+    expect(screen.getByDisplayValue("Pitfall 7")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Pitfall 8")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show fewer pitfalls" }));
+    expect(screen.getAllByTestId("pitfall-block")).toHaveLength(6);
+  });
+
+  it("updates the draft immediately while typing", () => {
+    render(<Harness initial={["old"]} />);
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "updated\nwith break" },
     });
 
     expect(screen.getByTestId("pitfall-value")).toHaveTextContent(
-      JSON.stringify(["prefix one", "two suffix"]),
+      JSON.stringify(["updated\nwith break"]),
     );
   });
 });

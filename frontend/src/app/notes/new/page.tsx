@@ -32,8 +32,6 @@ export default function NewNotePage() {
   const [note, setNote] = useState<NoteDraft>(emptyNote);
   const [activeField, setActiveField] = useState<MarkdownField | null>("statement");
   const [fieldSnapshot, setFieldSnapshot] = useState("");
-  const [activePitfall, setActivePitfall] = useState<number | null>(null);
-  const [pitfallSnapshot, setPitfallSnapshot] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +44,6 @@ export default function NewNotePage() {
   }
 
   function beginField(field: MarkdownField) {
-    setActivePitfall(null);
     setFieldSnapshot(note[field]);
     setActiveField(field);
   }
@@ -54,12 +51,6 @@ export default function NewNotePage() {
   function cancelField(field: MarkdownField) {
     update(field, fieldSnapshot);
     setActiveField(null);
-  }
-
-  function beginPitfall(index: number) {
-    setActiveField(null);
-    setPitfallSnapshot([...note.pitfalls]);
-    setActivePitfall(index);
   }
 
   function statementReadiness(statement: string): "ok" | "empty" | "incomplete" {
@@ -163,13 +154,11 @@ export default function NewNotePage() {
   });
   const pitfallLabels = {
     label: tCommon("fields.pitfalls"),
-    addPlaceholder: tDetail("pitfallBlocks.addPlaceholder"),
     add: tDetail("pitfallBlocks.add"),
-    edit: tDetail("pitfallBlocks.edit"),
     remove: tDetail("pitfallBlocks.remove"),
-    complete: tDetail("pitfallBlocks.complete"),
-    cancel: tDetail("pitfallBlocks.cancel"),
     empty: tDetail("pitfallBlocks.empty"),
+    expand: tDetail("pitfallBlocks.expand"),
+    collapse: tDetail("pitfallBlocks.collapse"),
   };
 
   if (isPending || !session) return null;
@@ -205,7 +194,6 @@ export default function NewNotePage() {
                 label={tCommon("fields.problemStatement")}
                 value={note.statement}
                 isEditing={activeField === "statement"}
-                isEditDisabled={activePitfall !== null}
                 onEdit={() => beginField("statement")}
                 onChange={(value) => update("statement", value)}
                 onComplete={() => setActiveField(null)}
@@ -232,7 +220,6 @@ export default function NewNotePage() {
                 label={tCommon("fields.approach")}
                 value={note.approach}
                 isEditing={activeField === "approach"}
-                isEditDisabled={activePitfall !== null}
                 onEdit={() => beginField("approach")}
                 onChange={(value) => update("approach", value)}
                 onComplete={() => setActiveField(null)}
@@ -291,38 +278,7 @@ export default function NewNotePage() {
                 <PitfallBlocks
                   value={note.pitfalls}
                   onChange={(value) => update("pitfalls", value)}
-                  activeIndex={activePitfall}
-                  onBeginEdit={beginPitfall}
-                  onCompleteEdit={() => setActivePitfall(null)}
-                  onCancelEdit={() => {
-                    update("pitfalls", pitfallSnapshot);
-                    setActivePitfall(null);
-                  }}
                   labels={pitfallLabels}
-                  actions={(index, draftValue, setDraftValue) => (
-                    <AiRewritePanel
-                      key={index}
-                      field="pitfall"
-                      value={draftValue}
-                      context={{
-                        title: note.title,
-                        statement: note.statement,
-                        approach: note.approach,
-                      }}
-                      quickActions={[
-                        {
-                          operation: "clarify",
-                          label: tDetail("ai.clarifyPitfall"),
-                        },
-                        {
-                          operation: "shorten",
-                          label: tDetail("ai.shortenPitfall"),
-                        },
-                      ]}
-                      onApply={setDraftValue}
-                      labels={aiLabels}
-                    />
-                  )}
                 />
               </div>
               {error && <p className="text-sm text-red-400">{error}</p>}
