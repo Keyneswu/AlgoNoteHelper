@@ -104,14 +104,8 @@ class VerifyConnectionResponse(BaseModel):
     message: str
 
 
-RewriteField = Literal["statement", "approach", "pitfall"]
-RewriteOperation = Literal[
-    "format_markdown",
-    "organize",
-    "clarify",
-    "shorten",
-    "custom",
-]
+RewriteField = Literal["statement", "approach"]
+RewriteOperation = Literal["format_markdown", "organize"]
 
 
 class RewriteContext(BaseModel):
@@ -129,7 +123,6 @@ class RewriteRequest(BaseModel):
     field: RewriteField
     operation: RewriteOperation
     text: str = Field(min_length=1, max_length=50_000)
-    instruction: str | None = Field(default=None, max_length=2_000)
     context: RewriteContext = Field(default_factory=RewriteContext)
 
     @model_validator(mode="after")
@@ -137,28 +130,18 @@ class RewriteRequest(BaseModel):
         if not self.text.strip():
             raise ValueError("Rewrite target must not be blank")
         allowed: dict[RewriteField, set[RewriteOperation]] = {
-            "statement": {"format_markdown", "custom"},
-            "approach": {"organize", "custom"},
-            "pitfall": {"clarify", "shorten", "custom"},
+            "statement": {"format_markdown"},
+            "approach": {"organize"},
         }
         if self.operation not in allowed[self.field]:
             raise ValueError(
                 f"Operation '{self.operation}' is not supported for field '{self.field}'"
             )
-        if self.operation == "custom" and not (self.instruction or "").strip():
-            raise ValueError("Custom rewrite requires an instruction")
         return self
 
 
 class RewriteResponse(BaseModel):
     rewritten: str
-
-
-class GenerateApproachRequest(BaseModel):
-    title: str = ""
-    statement: str = ""
-    tags: list[str] = Field(default_factory=list)
-    code: str = ""
 
 
 class AskChatMessage(BaseModel):

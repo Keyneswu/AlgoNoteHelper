@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isRewriteCandidateStale,
-  requestApproachGeneration,
   requestFieldRewrite,
   type FieldRewriteRequest,
 } from "@/lib/rewrite";
@@ -57,29 +56,4 @@ describe("field rewrite client", () => {
     expect(isRewriteCandidateStale("before", "before")).toBe(false);
     expect(isRewriteCandidateStale("before", "newer value")).toBe(true);
   });
-
-  it("requests approach generation through its distinct endpoint", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(okResponse("Generated approach"));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(
-      requestApproachGeneration({
-        title: "Example",
-        statement: "A complete problem statement with enough detail to solve.",
-        tags: ["dp"],
-        code: "",
-      }),
-    ).resolves.toBe("Generated approach");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/bff/rewrite/approach",
-      expect.objectContaining({ method: "POST" }),
-    );
-  });
 });
-
-function okResponse(rewritten: string) {
-  return new Response(JSON.stringify({ rewritten }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-}

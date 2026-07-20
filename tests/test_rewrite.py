@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.api import rewrite
-from app.schemas.notes import GenerateApproachRequest, RewriteContext, RewriteRequest
+from app.schemas.notes import RewriteContext, RewriteRequest
 
 
 def make_request(**overrides: object) -> RewriteRequest:
@@ -27,7 +27,11 @@ def make_request(**overrides: object) -> RewriteRequest:
 
 def test_rewrite_request_rejects_generic_code_rewrite() -> None:
     with pytest.raises(ValidationError):
-        make_request(field="code", operation="custom", instruction="Refactor it")
+        RewriteRequest(
+            field="code",
+            operation="format_markdown",
+            text="print('hello')",
+        )
 
 
 @pytest.mark.parametrize(
@@ -35,7 +39,6 @@ def test_rewrite_request_rejects_generic_code_rewrite() -> None:
     [
         ("statement", "organize"),
         ("approach", "format_markdown"),
-        ("pitfall", "organize"),
     ],
 )
 def test_rewrite_request_rejects_invalid_field_operation(
@@ -45,12 +48,19 @@ def test_rewrite_request_rejects_invalid_field_operation(
         make_request(field=field, operation=operation)
 
 
-def test_custom_operation_requires_a_bounded_instruction() -> None:
+@pytest.mark.parametrize(
+    ("overrides",),
+    [
+        ({"field": "pitfall", "operation": "clarify"},),
+        ({"operation": "custom"},),
+        ({"field": "pitfall", "operation": "shorten"},),
+        ({"field": "approach", "operation": "custom"},),
+        ({"field": "statement", "operation": "custom"},),
+    ],
+)
+def test_rewrite_request_rejects_removed_policies(overrides: dict[str, str]) -> None:
     with pytest.raises(ValidationError):
-        make_request(operation="custom", instruction=" ")
-
-    with pytest.raises(ValidationError):
-        make_request(operation="custom", instruction="x" * 2001)
+        make_request(**overrides)
 
 
 def test_rewrite_request_rejects_whitespace_only_target() -> None:
@@ -74,12 +84,11 @@ def test_statement_prompt_uses_only_title_context_and_non_invention_policy() -> 
     assert "return 0;" not in messages[1]["content"]
 
 
-def test_approach_prompt_includes_grounding_context_and_custom_instruction() -> None:
+def test_approach_prompt_includes_grounding_context() -> None:
     request = make_request(
         field="approach",
-        operation="custom",
+        operation="organize",
         text="Use dynamic programming.",
-        instruction="Put complexity last.",
         context=RewriteContext(
             title="Largest Sum",
             statement="Find the largest sum.",
@@ -94,53 +103,12 @@ def test_approach_prompt_includes_grounding_context_and_custom_instruction() -> 
     assert "Find the largest sum." in messages[1]["content"]
     assert "dp, array" in messages[1]["content"]
     assert "int solve() {}" in messages[1]["content"]
-    assert "Put complexity last." in messages[1]["content"]
     assert "must not be repeated as context" not in messages[1]["content"]
 
 
-def test_generation_prompt_keeps_a_complete_statement_authoritative() -> None:
-    request = GenerateApproachRequest(
-        title="Longest Subarray",
-        statement=(
-            "Given a binary matrix, return the side length of the largest square "
-            "whose border contains only ones. The matrix has M rows and N columns."
-        ),
-        tags=["array"],
-        code="int longestIncreasingSubarray(int[] values) { return 0; }",
-    )
-
-    messages = rewrite._build_generate_approach_messages(request)
-
-    assert "authoritative source" in messages[0]["content"]
-    assert "ignore the conflicting auxiliary context" in messages[0]["content"]
-    assert "Always write an" in messages[0]["content"]
-    assert "do not refuse" in messages[0]["content"]
-    assert "INSUFFICIENT_STATEMENT" not in messages[0]["content"]
-    assert request.statement in messages[1]["content"]
-
-
-def test_pitfall_output_is_normalized_to_one_line() -> None:
-    request = make_request(
-        field="pitfall",
-        operation="clarify",
-        text="Do not overwrite the previous DP row.",
-    )
-
-    assert (
-        rewrite._normalize_rewrite_output(request, "  Keep the previous\nDP row.  ")
-        == "Keep the previous DP row."
-    )
-
-
-def test_pitfall_output_must_remain_non_empty() -> None:
-    request = make_request(
-        field="pitfall",
-        operation="shorten",
-        text="Do not overwrite the previous DP row.",
-    )
-
+def test_normalize_rewrite_output_rejects_empty_model_response() -> None:
     with pytest.raises(HTTPException, match="empty content"):
-        rewrite._normalize_rewrite_output(request, " \n ")
+        rewrite._normalize_rewrite_output(" \n ")
 
 
 @pytest.mark.asyncio
@@ -187,59 +155,3 @@ async def test_rewrite_stops_when_chat_credentials_are_missing(monkeypatch) -> N
         await rewrite.rewrite_field(make_request(), user_id="user-1", db=object())
 
     assert called is False
-
-
-@pytest.mark.asyncio
-async def test_generate_approach_rejects_incomplete_statement_before_model(
-    monkeypatch,
-) -> None:
-    called = False
-
-    async def fake_completion(**kwargs: object) -> str:
-        nonlocal called
-        called = True
-        return "unused"
-
-    monkeypatch.setattr(rewrite, "chat_completion", fake_completion)
-
-    with pytest.raises(HTTPException, match="incomplete"):
-        await rewrite.generate_approach(
-            GenerateApproachRequest(title="X", statement="too short"),
-            user_id="user-1",
-            db=object(),
-        )
-
-    assert called is False
-
-
-@pytest.mark.asyncio
-async def test_generate_approach_returns_model_output_for_complete_statement(
-    monkeypatch,
-) -> None:
-    async def fake_config(db: object, user_id: str):
-        return (
-            SimpleNamespace(chat_base_url="https://example.test", chat_model="model"),
-            "secret",
-        )
-
-    async def fake_completion(**kwargs: object) -> str:
-        return "## Approach\n\n1. Scan borders\n2. Track max side length"
-
-    monkeypatch.setattr(rewrite, "require_chat_config", fake_config)
-    monkeypatch.setattr(rewrite, "chat_completion", fake_completion)
-
-    response = await rewrite.generate_approach(
-        GenerateApproachRequest(
-            title="Longest Subarray",
-            statement=(
-                "Given a binary matrix, return the side length of the largest square "
-                "whose border contains only ones."
-            ),
-            tags=["dp"],
-            code="",
-        ),
-        user_id="user-1",
-        db=object(),
-    )
-
-    assert "Scan borders" in response.rewritten
