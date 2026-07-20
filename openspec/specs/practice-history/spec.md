@@ -23,11 +23,11 @@ The system SHALL store an ordered list of practice/review timestamps (`review_da
 - **THEN** the note has `review_dates` backfilled from `created_at` when the array would otherwise be empty
 
 ### Requirement: Practice history on note detail UI
-The system SHALL present practice/review dates on the note detail page in the layout region under the pitfalls field (alongside the tags column), using removable chips comparable to tag removal, plus an explicit control to record another practice. Opening the detail page MUST NOT automatically append a review date.
+The system SHALL present practice/review dates on the note detail page in the right column of the meta region (parallel with tags and difficulty on the left), using removable chips comparable to tag removal, plus an explicit control to record another practice. Opening the detail page MUST NOT automatically append a review date. Practice history MUST NOT occupy the pitfalls section; pitfalls live in their own full-width section above this meta region.
 
 #### Scenario: View and remove chips
 - **WHEN** the owner opens a note that has one or more `review_dates`
-- **THEN** the dates are shown as chips with a control to remove each date
+- **THEN** the dates are shown as chips with a control to remove each date in the right meta column
 
 #### Scenario: Record practice button
 - **WHEN** the owner activates the control to record another practice
@@ -36,6 +36,10 @@ The system SHALL present practice/review dates on the note detail page in the la
 #### Scenario: No auto-record on view
 - **WHEN** the owner merely opens the note detail page
 - **THEN** `review_dates` is unchanged until they explicitly append or delete
+
+#### Scenario: Parallel with tags and difficulty
+- **WHEN** the owner views the note detail meta region
+- **THEN** tags and difficulty appear on the left and practice history appears on the right
 
 ### Requirement: Append review date on dedup merge save
 When the owner completes a duplicate-resolve **Save** that merges an incoming draft into an existing practice note, the system SHALL append a new timestamp to that note's `review_dates` as part of the merge persistence (equivalent to recording another practice), in addition to applying the merged field values. This append MUST occur even if the owner did not separately use the note-detail “record practice” control.
@@ -47,3 +51,4 @@ When the owner completes a duplicate-resolve **Save** that merges an incoming dr
 #### Scenario: Keep as new does not append on old note
 - **WHEN** the owner chooses Keep as new from resolve
 - **THEN** the previously matched existing note's `review_dates` are unchanged and the new note is seeded per normal create rules
+
