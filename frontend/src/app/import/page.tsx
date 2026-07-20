@@ -56,26 +56,15 @@ export default function ImportPage() {
   );
   const [error, setError] = useState(initial.error);
   const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const saved = loadImportUiState();
-    setMarkdown(saved.markdown);
-    setCandidates(saved.candidates);
-    setExpandedKeys(new Set(saved.expandedKeys));
-    setError(saved.error);
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
     saveImportUiState({
       markdown,
       candidates,
       expandedKeys: [...expandedKeys].map(String),
       error,
     });
-  }, [ready, markdown, candidates, expandedKeys, error]);
+  }, [markdown, candidates, expandedKeys, error]);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -154,11 +143,14 @@ export default function ImportPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        candidates: pending.map(({ key: _key, matches: _matches, mergedNoteId: _merged, ...candidate }) => ({
-          ...candidate,
-          difficulty: clampDifficulty(candidate.difficulty),
-          pitfalls: normalizePitfalls(candidate.pitfalls),
-        })),
+        candidates: pending.map((candidate) => {
+          const draft = noteToDraft(candidate);
+          return {
+            ...draft,
+            difficulty: clampDifficulty(draft.difficulty),
+            pitfalls: normalizePitfalls(draft.pitfalls),
+          };
+        }),
       }),
     });
     const data = (await response.json()) as PracticeNote[] | { error?: string };

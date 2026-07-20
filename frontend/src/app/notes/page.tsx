@@ -184,8 +184,6 @@ function NotesPageContent() {
       practicedTo: practicedTo && ymdToCalendar(practicedTo) ? practicedTo : null,
     };
     return { committed, difficulty, sort, order, page };
-    // Only hydrate from URL on mount / when searchParams identity changes from navigation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const [notes, setNotes] = useState<PracticeNote[]>([]);
@@ -210,6 +208,8 @@ function NotesPageContent() {
 
   // Keep drafts/committed in sync when URL changes (back/forward).
   useEffect(() => {
+    // URL navigation is the external source of truth for the complete browse form.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftTitle(initial.committed.title);
     setDraftTags(initial.committed.tags);
     setDraftRange(rangeFromCommitted(initial.committed));
@@ -272,6 +272,8 @@ function NotesPageContent() {
 
   useEffect(() => {
     if (!session) return;
+    // Fetching is the intended external synchronization for committed browse state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadNotes(committed, difficulty, sort, order, page);
     if (skipUrlWriteRef.current) {
       skipUrlWriteRef.current = false;

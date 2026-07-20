@@ -54,6 +54,8 @@ export function ResolveConflictPage() {
   useEffect(() => {
     const stored = loadResolveSession();
     if (!stored || !stored.matches.length) {
+      // Resolve state is an external in-memory navigation handoff loaded after mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPayload(null);
       return;
     }

@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class PracticeNoteBase(BaseModel):
@@ -104,9 +104,50 @@ class VerifyConnectionResponse(BaseModel):
     message: str
 
 
+RewriteField = Literal["statement", "approach", "pitfall"]
+RewriteOperation = Literal[
+    "format_markdown",
+    "organize",
+    "clarify",
+    "shorten",
+    "custom",
+]
+
+
+class RewriteContext(BaseModel):
+    title: str = Field(default="", max_length=512)
+    statement: str = Field(default="", max_length=50_000)
+    approach: str = Field(default="", max_length=50_000)
+    tags: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(
+        default_factory=list,
+        max_length=100,
+    )
+    code: str = Field(default="", max_length=100_000)
+
+
 class RewriteRequest(BaseModel):
-    field: str
-    text: str
+    field: RewriteField
+    operation: RewriteOperation
+    text: str = Field(min_length=1, max_length=50_000)
+    instruction: str | None = Field(default=None, max_length=2_000)
+    context: RewriteContext = Field(default_factory=RewriteContext)
+
+    @model_validator(mode="after")
+    def validate_operation(self) -> Self:
+        if not self.text.strip():
+            raise ValueError("Rewrite target must not be blank")
+        allowed: dict[RewriteField, set[RewriteOperation]] = {
+            "statement": {"format_markdown", "custom"},
+            "approach": {"organize", "custom"},
+            "pitfall": {"clarify", "shorten", "custom"},
+        }
+        if self.operation not in allowed[self.field]:
+            raise ValueError(
+                f"Operation '{self.operation}' is not supported for field '{self.field}'"
+            )
+        if self.operation == "custom" and not (self.instruction or "").strip():
+            raise ValueError("Custom rewrite requires an instruction")
+        return self
 
 
 class RewriteResponse(BaseModel):

@@ -134,6 +134,45 @@
       "rewriteWithAi": "Rewrite with AI",
       "generateApproach": "AI generate approach",
       "reverse": "Reverse",
+      "markdown": {
+        "edit": "Edit Markdown",
+        "source": "Source",
+        "preview": "Preview",
+        "complete": "Complete",
+        "cancel": "Cancel",
+        "emptyStatement": "Add a problem statement",
+        "emptyApproach": "Add an approach"
+      },
+      "ai": {
+        "formatStatement": "Format Markdown",
+        "organizeApproach": "Organize approach",
+        "clarifyPitfall": "Clarify",
+        "shortenPitfall": "Shorten",
+        "custom": "Custom rewrite",
+        "instructionPlaceholder": "Tell AI what to change in this field",
+        "runCustom": "Review rewrite",
+        "apply": "Apply to draft",
+        "discard": "Discard",
+        "undo": "Undo AI change",
+        "before": "Before",
+        "after": "Candidate",
+        "stale": "This field changed after the request. Run the rewrite again.",
+        "errorFallback": "Could not rewrite this field"
+      },
+      "pitfallBlocks": {
+        "addPlaceholder": "Add one pitfall — Enter to save",
+        "add": "Add",
+        "edit": "Edit",
+        "remove": "Remove",
+        "complete": "Complete",
+        "cancel": "Cancel",
+        "empty": "No pitfalls yet. Add the mistake you are most likely to repeat."
+      },
+      "dirty": {
+        "message": "You have unsaved note changes.",
+        "save": "Save changes",
+        "discard": "Discard changes"
+      },
       "aiAssistHint": "AI only updates the editor. Generate approach needs a complete problem statement. Use Reverse to restore the last saved text, then Save when ready.",
       "aiRewriteHint": "AI rewrites only update the editor. Use Reverse to restore the last saved text, then Save when you are ready.",
       "save": "Save",

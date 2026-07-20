@@ -45,6 +45,8 @@ export default function AskPage() {
 
   useEffect(() => {
     const saved = loadAskSession();
+    // Session storage is client-only; hydrate after mount to keep the server snapshot stable.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setContextNotes(saved.contextNotes);
     setMessages(saved.messages);
     setReady(true);

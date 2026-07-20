@@ -41,8 +41,7 @@ export async function apiFetch<T>(
   }
   const res = await fetch(url, { ...init, headers: headersInit });
   if (!res.ok) {
-    const text = await res.text();
-    throw new ApiError(res.status, text || res.statusText);
+    throw new ApiError(res.status, await readApiErrorMessage(res));
   }
   if (res.status === 204) {
     return undefined as T;
@@ -66,8 +65,36 @@ export async function apiFetchStream(
   }
   const res = await fetch(url, { ...init, headers: headersInit, cache: "no-store" });
   if (!res.ok) {
-    const text = await res.text();
-    throw new ApiError(res.status, text || res.statusText);
+    throw new ApiError(res.status, await readApiErrorMessage(res));
   }
   return res;
+}
+
+async function readApiErrorMessage(res: Response): Promise<string> {
+  const text = await res.text();
+  if (!text) return res.statusText;
+  try {
+    const parsed = JSON.parse(text) as { detail?: unknown; error?: unknown };
+    if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+      return parsed.detail;
+    }
+    if (Array.isArray(parsed.detail)) {
+      const parts = parsed.detail
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (item && typeof item === "object" && "msg" in item) {
+            return String((item as { msg: unknown }).msg);
+          }
+          return "";
+        })
+        .filter(Boolean);
+      if (parts.length) return parts.join("; ");
+    }
+    if (typeof parsed.error === "string" && parsed.error.trim()) {
+      return parsed.error;
+    }
+  } catch {
+    // Upstream sometimes returns plain text; keep it as-is.
+  }
+  return text;
 }

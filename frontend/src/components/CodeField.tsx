@@ -58,6 +58,8 @@ export function CodeField({
   const needsToggle = lines > cappedMax;
 
   useEffect(() => {
+    // Reset the user's expansion preference when the controlled value becomes short.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!needsToggle && expanded) setExpanded(false);
   }, [needsToggle, expanded]);
 

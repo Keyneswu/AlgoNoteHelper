@@ -3,10 +3,13 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AlertDialog, Button, Card, Form, Input, TextArea, TextField } from "@heroui/react";
+import { AlertDialog, Button, Card, Form, Input, TextField } from "@heroui/react";
+import { AiRewritePanel } from "@/components/AiRewritePanel";
 import { AppNav } from "@/components/AppNav";
 import { CodeField } from "@/components/CodeField";
 import { FieldLabel } from "@/components/FieldLabel";
+import { InlineMarkdownField } from "@/components/InlineMarkdownField";
+import { PitfallBlocks } from "@/components/PitfallBlocks";
 import { DifficultyBadge } from "@/components/DifficultyBadge";
 import { DifficultyPicker } from "@/components/DifficultyPicker";
 import { NoteTags } from "@/components/NoteTags";
@@ -15,8 +18,12 @@ import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
 import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
-import { normalizePitfalls, pitfallsFromText } from "@/lib/pitfalls";
+import { clonePracticeNote, noteDraftIsDirty } from "@/lib/note-draft";
+import { normalizePitfalls } from "@/lib/pitfalls";
+import { requestApproachGeneration } from "@/lib/rewrite";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
+
+type MarkdownField = "statement" | "approach";
 
 export default function NotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -26,13 +33,14 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
   const { data: session, isPending } = authClient.useSession();
   const codeLanguage = usePreferredCodeLanguage(!!session);
   const [note, setNote] = useState<PracticeNote | null>(null);
-  const [baseline, setBaseline] = useState<Pick<PracticeNote, "statement" | "approach" | "code"> | null>(
-    null,
-  );
+  const [savedNote, setSavedNote] = useState<PracticeNote | null>(null);
+  const [activeField, setActiveField] = useState<MarkdownField | null>(null);
+  const [fieldSnapshot, setFieldSnapshot] = useState("");
+  const [activePitfall, setActivePitfall] = useState<number | null>(null);
+  const [pitfallSnapshot, setPitfallSnapshot] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [rewriting, setRewriting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -46,12 +54,8 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
       if (!response.ok) setError((data as { error?: string }).error ?? t("errors.couldNotLoad"));
       else {
         const loaded = data as PracticeNote;
-        setNote(loaded);
-        setBaseline({
-          statement: loaded.statement,
-          approach: loaded.approach,
-          code: loaded.code,
-        });
+        setNote(clonePracticeNote(loaded));
+        setSavedNote(clonePracticeNote(loaded));
       }
     })();
   }, [id, session, t]);
@@ -60,9 +64,23 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     setNote((current) => (current ? { ...current, [field]: value } : current));
   }
 
-  function reverseField(field: "statement" | "approach" | "code") {
-    if (!baseline) return;
-    update(field, baseline[field]);
+  function beginField(field: MarkdownField) {
+    if (!note) return;
+    setActivePitfall(null);
+    setFieldSnapshot(note[field]);
+    setActiveField(field);
+  }
+
+  function cancelField(field: MarkdownField) {
+    update(field, fieldSnapshot);
+    setActiveField(null);
+  }
+
+  function beginPitfall(index: number) {
+    if (!note) return;
+    setActiveField(null);
+    setPitfallSnapshot([...note.pitfalls]);
+    setActivePitfall(index);
   }
 
   function statementReadiness(statement: string): "ok" | "empty" | "incomplete" {
@@ -72,48 +90,21 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     return "ok";
   }
 
-  async function rewrite(field: "statement" | "code") {
-    if (!note) return;
-    setRewriting(field);
-    setError("");
-    const response = await fetch("/api/bff/rewrite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ field, text: note[field] }),
-    });
-    const data = (await response.json()) as { rewritten?: string; error?: string };
-    setRewriting(null);
-    if (!response.ok) return setError(data.error ?? t("errors.couldNotRewrite"));
-    update(field, data.rewritten ?? note[field]);
-  }
-
-  async function generateApproach() {
-    if (!note) return;
+  async function generateApproach(): Promise<string> {
+    if (!note) throw new Error(t("errors.couldNotGenerateApproach"));
     const readiness = statementReadiness(note.statement);
     if (readiness === "empty") {
-      setError(t("errors.statementRequiredForApproach"));
-      return;
+      throw new Error(t("errors.statementRequiredForApproach"));
     }
     if (readiness === "incomplete") {
-      setError(t("errors.statementIncompleteForApproach"));
-      return;
+      throw new Error(t("errors.statementIncompleteForApproach"));
     }
-    setRewriting("approach");
-    setError("");
-    const response = await fetch("/api/bff/rewrite/approach", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: note.title,
-        statement: note.statement,
-        tags: note.tags,
-        code: note.code,
-      }),
+    return requestApproachGeneration({
+      title: note.title,
+      statement: note.statement,
+      tags: note.tags,
+      code: note.code,
     });
-    const data = (await response.json()) as { rewritten?: string; error?: string };
-    setRewriting(null);
-    if (!response.ok) return setError(data.error ?? t("errors.couldNotGenerateApproach"));
-    update("approach", data.rewritten ?? note.approach);
   }
 
   async function saveNote(andReturn: boolean) {
@@ -133,12 +124,10 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     setSaving(false);
     if (!response.ok) return setError((data as { error?: string }).error ?? t("errors.couldNotSave"));
     const saved = data as PracticeNote;
-    setNote(saved);
-    setBaseline({
-      statement: saved.statement,
-      approach: saved.approach,
-      code: saved.code,
-    });
+    setNote(clonePracticeNote(saved));
+    setSavedNote(clonePracticeNote(saved));
+    setActiveField(null);
+    setActivePitfall(null);
     if (andReturn) router.push("/notes");
   }
 
@@ -160,6 +149,46 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     }
     router.replace("/notes");
   }
+
+  function discardDraft() {
+    if (!savedNote) return;
+    setNote(clonePracticeNote(savedNote));
+    setActiveField(null);
+    setActivePitfall(null);
+    setError("");
+  }
+
+  const dirty = noteDraftIsDirty(savedNote, note);
+  const aiLabels = {
+    custom: t("ai.custom"),
+    instructionPlaceholder: t("ai.instructionPlaceholder"),
+    runCustom: t("ai.runCustom"),
+    apply: t("ai.apply"),
+    discard: t("ai.discard"),
+    undo: t("ai.undo"),
+    before: t("ai.before"),
+    after: t("ai.after"),
+    stale: t("ai.stale"),
+    errorFallback: t("ai.errorFallback"),
+  };
+  const markdownLabels = (empty: string) => ({
+    edit: t("markdown.edit"),
+    source: t("markdown.source"),
+    preview: t("markdown.preview"),
+    complete: t("markdown.complete"),
+    cancel: t("markdown.cancel"),
+    empty,
+  });
+  const pitfallLabels = {
+    label: tCommon("fields.pitfalls"),
+    addPlaceholder: t("pitfallBlocks.addPlaceholder"),
+    add: t("pitfallBlocks.add"),
+    edit: t("pitfallBlocks.edit"),
+    remove: t("pitfallBlocks.remove"),
+    complete: t("pitfallBlocks.complete"),
+    cancel: t("pitfallBlocks.cancel"),
+    empty: t("pitfallBlocks.empty"),
+  };
 
   if (isPending || !session) return null;
   return (
@@ -200,66 +229,72 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                   <FieldLabel kind="title">{tCommon("fields.title")}</FieldLabel>
                   <Input className="!text-xl font-semibold leading-snug" />
                 </TextField>
-                <div className="space-y-2">
-                  <TextField
-                    name="statement"
-                    value={note.statement}
-                    onChange={(value) => update("statement", value)}
-                  >
-                    <FieldLabel kind="statement">{tCommon("fields.problemStatement")}</FieldLabel>
-                    <TextArea rows={5} className="!text-base leading-relaxed" />
-                  </TextField>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      isPending={rewriting === "statement"}
-                      onPress={() => rewrite("statement")}
-                    >
-                      {t("rewriteWithAi")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="tertiary"
-                      isDisabled={!baseline || note.statement === baseline.statement}
-                      onPress={() => reverseField("statement")}
-                    >
-                      {t("reverse")}
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <TextField
-                    name="approach"
-                    value={note.approach}
-                    onChange={(value) => update("approach", value)}
-                  >
-                    <FieldLabel kind="approach">{tCommon("fields.approach")}</FieldLabel>
-                    <TextArea rows={5} className="!text-base leading-relaxed" />
-                  </TextField>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      isPending={rewriting === "approach"}
-                      onPress={() => void generateApproach()}
-                    >
-                      {t("generateApproach")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="tertiary"
-                      isDisabled={!baseline || note.approach === baseline.approach}
-                      onPress={() => reverseField("approach")}
-                    >
-                      {t("reverse")}
-                    </Button>
-                  </div>
-                </div>
+                <InlineMarkdownField
+                  kind="statement"
+                  label={tCommon("fields.problemStatement")}
+                  value={note.statement}
+                  isEditing={activeField === "statement"}
+                  isEditDisabled={activePitfall !== null}
+                  onEdit={() => beginField("statement")}
+                  onChange={(value) => update("statement", value)}
+                  onComplete={() => setActiveField(null)}
+                  onCancel={() => cancelField("statement")}
+                  labels={markdownLabels(t("markdown.emptyStatement"))}
+                  actions={
+                    <AiRewritePanel
+                      field="statement"
+                      value={note.statement}
+                      context={{ title: note.title }}
+                      quickActions={[
+                        {
+                          operation: "format_markdown",
+                          label: t("ai.formatStatement"),
+                        },
+                      ]}
+                      onApply={(value) => update("statement", value)}
+                      labels={aiLabels}
+                    />
+                  }
+                />
+                <InlineMarkdownField
+                  kind="approach"
+                  label={tCommon("fields.approach")}
+                  value={note.approach}
+                  isEditing={activeField === "approach"}
+                  isEditDisabled={activePitfall !== null}
+                  onEdit={() => beginField("approach")}
+                  onChange={(value) => update("approach", value)}
+                  onComplete={() => setActiveField(null)}
+                  onCancel={() => cancelField("approach")}
+                  labels={markdownLabels(t("markdown.emptyApproach"))}
+                  actions={
+                    <AiRewritePanel
+                      field="approach"
+                      value={note.approach}
+                      context={{
+                        title: note.title,
+                        statement: note.statement,
+                        tags: note.tags,
+                        code: note.code,
+                      }}
+                      quickActions={[
+                        {
+                          operation: "organize",
+                          label: t("ai.organizeApproach"),
+                        },
+                      ]}
+                      externalActions={[
+                        {
+                          id: "generate",
+                          label: t("generateApproach"),
+                          run: generateApproach,
+                        },
+                      ]}
+                      onApply={(value) => update("approach", value)}
+                      labels={aiLabels}
+                    />
+                  }
+                />
                 <div className="space-y-2">
                   <FieldLabel kind="code">{tCommon("fields.code")}</FieldLabel>
                   <CodeField
@@ -269,26 +304,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                     minRows={8}
                     maxRows={22}
                   />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      isPending={rewriting === "code"}
-                      onPress={() => rewrite("code")}
-                    >
-                      {t("rewriteWithAi")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="tertiary"
-                      isDisabled={!baseline || note.code === baseline.code}
-                      onPress={() => reverseField("code")}
-                    >
-                      {t("reverse")}
-                    </Button>
-                  </div>
                 </div>
                 <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
                   <div className="space-y-5">
@@ -306,26 +321,45 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                       onChange={(dates) => update("review_dates", dates)}
                     />
                   </div>
-                  <TextField
-                    name="pitfalls"
-                    value={note.pitfalls.join("\n")}
-                    onChange={(value) => update("pitfalls", pitfallsFromText(value))}
-                    className="sm:min-h-full"
-                  >
-                    <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
-                    <TextArea
-                      rows={12}
-                      className="min-h-[16rem] sm:min-h-[22rem] !text-base leading-relaxed"
-                      placeholder={tCommon("placeholders.pitfallsOnePerLine")}
-                    />
-                  </TextField>
+                  <PitfallBlocks
+                    value={note.pitfalls}
+                    onChange={(value) => update("pitfalls", value)}
+                    activeIndex={activePitfall}
+                    onBeginEdit={beginPitfall}
+                    onCompleteEdit={() => setActivePitfall(null)}
+                    onCancelEdit={() => {
+                      update("pitfalls", pitfallSnapshot);
+                      setActivePitfall(null);
+                    }}
+                    labels={pitfallLabels}
+                    actions={(index, draftValue, setDraftValue) => (
+                      <AiRewritePanel
+                        key={index}
+                        field="pitfall"
+                        value={draftValue}
+                        context={{
+                          title: note.title,
+                          statement: note.statement,
+                          approach: note.approach,
+                        }}
+                        quickActions={[
+                          {
+                            operation: "clarify",
+                            label: t("ai.clarifyPitfall"),
+                          },
+                          {
+                            operation: "shorten",
+                            label: t("ai.shortenPitfall"),
+                          },
+                        ]}
+                        onApply={setDraftValue}
+                        labels={aiLabels}
+                      />
+                    )}
+                  />
                 </div>
-                <p className="text-sm text-muted">{t("aiAssistHint")}</p>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap gap-2">
-                    <Button type="submit" isPending={saving} isDisabled={deleting}>
-                      {t("save")}
-                    </Button>
                     <Button
                       type="button"
                       variant="secondary"
@@ -373,6 +407,33 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                   </AlertDialog>
                 </div>
               </Form>
+              {dirty && (
+                <div className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/35 bg-surface/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur">
+                  <p className="text-sm font-medium text-foreground">
+                    {t("dirty.message")}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="tertiary"
+                      isDisabled={saving || deleting}
+                      onPress={discardDraft}
+                    >
+                      {t("dirty.discard")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      isPending={saving}
+                      isDisabled={deleting}
+                      onPress={() => void saveNote(false)}
+                    >
+                      {t("dirty.save")}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card.Content>
           </Card>
         )}

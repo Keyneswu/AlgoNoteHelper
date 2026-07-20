@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   type Dispatch,
@@ -82,13 +83,16 @@ export function AskRuntimeProvider({
   onTranscript,
 }: AskRuntimeProviderProps) {
   const filtersRef = useRef(filters);
-  filtersRef.current = filters;
   const contextNotesRef = useRef(contextNotes);
-  contextNotesRef.current = contextNotes;
   const onNotesAddedRef = useRef(onNotesAdded);
-  onNotesAddedRef.current = onNotesAdded;
   const onTranscriptRef = useRef(onTranscript);
-  onTranscriptRef.current = onTranscript;
+
+  useEffect(() => {
+    filtersRef.current = filters;
+    contextNotesRef.current = contextNotes;
+    onNotesAddedRef.current = onNotesAdded;
+    onTranscriptRef.current = onTranscript;
+  }, [contextNotes, filters, onNotesAdded, onTranscript]);
 
   const adapter: ChatModelAdapter = useMemo(
     () => ({

@@ -1,8 +1,5 @@
-# ai-field-rewrite Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change init-algonote-helper. Update Purpose after archive.
-## Requirements
 ### Requirement: Field-level AI rewrite control
 The system SHALL provide named, validated per-field AI operations that submit the selected target content and permitted note context to the user's configured chat model and return candidate content for review before it can enter the page draft.
 
@@ -33,12 +30,7 @@ The system SHALL format problem statements as faithful Markdown by cleaning whit
 - **WHEN** the input problem statement is written in Chinese or English
 - **THEN** the formatted candidate remains in that language unless translation is introduced by a future explicitly separate capability
 
-### Requirement: Rewrite requires chat credentials
-The system SHALL reject field rewrite requests when the current user has no valid chat API configuration.
-
-#### Scenario: Missing chat key
-- **WHEN** a user requests field rewrite without a configured chat API key
-- **THEN** the system returns an error directing them to configure chat credentials
+## ADDED Requirements
 
 ### Requirement: Validated field-operation contract
 The system SHALL validate the rewrite field and operation as an allowed combination before calling the model and SHALL reject unsupported combinations.

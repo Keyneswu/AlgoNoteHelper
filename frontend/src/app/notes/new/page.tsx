@@ -3,20 +3,24 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Card, Form, Input, TextArea, TextField } from "@heroui/react";
+import { Button, Card, Form, Input, TextField } from "@heroui/react";
+import { AiRewritePanel } from "@/components/AiRewritePanel";
 import { AppNav } from "@/components/AppNav";
 import { CodeField } from "@/components/CodeField";
 import { FieldLabel } from "@/components/FieldLabel";
+import { InlineMarkdownField } from "@/components/InlineMarkdownField";
+import { PitfallBlocks } from "@/components/PitfallBlocks";
 import { DifficultyPicker } from "@/components/DifficultyPicker";
 import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { authClient } from "@/lib/auth-client";
 import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
-import { normalizePitfalls, pitfallsFromText } from "@/lib/pitfalls";
+import { normalizePitfalls } from "@/lib/pitfalls";
 import { noteToDraft, saveResolveSession } from "@/lib/resolve-store";
+import { requestApproachGeneration } from "@/lib/rewrite";
 import { emptyNote, type NoteDraft, type PracticeNote } from "@/lib/types";
 
-type AiField = "statement" | "approach" | "code";
+type MarkdownField = "statement" | "approach";
 
 export default function NewNotePage() {
   const t = useTranslations("notes.new");
@@ -26,14 +30,12 @@ export default function NewNotePage() {
   const { data: session, isPending } = authClient.useSession();
   const codeLanguage = usePreferredCodeLanguage(!!session);
   const [note, setNote] = useState<NoteDraft>(emptyNote);
-  const [baseline, setBaseline] = useState<Pick<NoteDraft, AiField>>({
-    statement: emptyNote.statement,
-    approach: emptyNote.approach,
-    code: emptyNote.code,
-  });
+  const [activeField, setActiveField] = useState<MarkdownField | null>("statement");
+  const [fieldSnapshot, setFieldSnapshot] = useState("");
+  const [activePitfall, setActivePitfall] = useState<number | null>(null);
+  const [pitfallSnapshot, setPitfallSnapshot] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [rewriting, setRewriting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isPending && !session) router.replace("/login");
@@ -43,8 +45,21 @@ export default function NewNotePage() {
     setNote((current) => ({ ...current, [field]: value }));
   }
 
-  function reverseField(field: AiField) {
-    update(field, baseline[field]);
+  function beginField(field: MarkdownField) {
+    setActivePitfall(null);
+    setFieldSnapshot(note[field]);
+    setActiveField(field);
+  }
+
+  function cancelField(field: MarkdownField) {
+    update(field, fieldSnapshot);
+    setActiveField(null);
+  }
+
+  function beginPitfall(index: number) {
+    setActiveField(null);
+    setPitfallSnapshot([...note.pitfalls]);
+    setActivePitfall(index);
   }
 
   function statementReadiness(statement: string): "ok" | "empty" | "incomplete" {
@@ -54,48 +69,20 @@ export default function NewNotePage() {
     return "ok";
   }
 
-  async function rewrite(field: "statement" | "code") {
-    setBaseline((current) => ({ ...current, [field]: note[field] }));
-    setRewriting(field);
-    setError("");
-    const response = await fetch("/api/bff/rewrite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ field, text: note[field] }),
-    });
-    const data = (await response.json()) as { rewritten?: string; error?: string };
-    setRewriting(null);
-    if (!response.ok) return setError(data.error ?? tDetail("errors.couldNotRewrite"));
-    update(field, data.rewritten ?? note[field]);
-  }
-
-  async function generateApproach() {
+  async function generateApproach(): Promise<string> {
     const readiness = statementReadiness(note.statement);
     if (readiness === "empty") {
-      setError(tDetail("errors.statementRequiredForApproach"));
-      return;
+      throw new Error(tDetail("errors.statementRequiredForApproach"));
     }
     if (readiness === "incomplete") {
-      setError(tDetail("errors.statementIncompleteForApproach"));
-      return;
+      throw new Error(tDetail("errors.statementIncompleteForApproach"));
     }
-    setBaseline((current) => ({ ...current, approach: note.approach }));
-    setRewriting("approach");
-    setError("");
-    const response = await fetch("/api/bff/rewrite/approach", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: note.title,
-        statement: note.statement,
-        tags: note.tags,
-        code: note.code,
-      }),
+    return requestApproachGeneration({
+      title: note.title,
+      statement: note.statement,
+      tags: note.tags,
+      code: note.code,
     });
-    const data = (await response.json()) as { rewritten?: string; error?: string };
-    setRewriting(null);
-    if (!response.ok) return setError(data.error ?? tDetail("errors.couldNotGenerateApproach"));
-    update("approach", data.rewritten ?? note.approach);
   }
 
   async function createNote(draft: NoteDraft) {
@@ -154,6 +141,37 @@ export default function NewNotePage() {
     setSaving(false);
   }
 
+  const aiLabels = {
+    custom: tDetail("ai.custom"),
+    instructionPlaceholder: tDetail("ai.instructionPlaceholder"),
+    runCustom: tDetail("ai.runCustom"),
+    apply: tDetail("ai.apply"),
+    discard: tDetail("ai.discard"),
+    undo: tDetail("ai.undo"),
+    before: tDetail("ai.before"),
+    after: tDetail("ai.after"),
+    stale: tDetail("ai.stale"),
+    errorFallback: tDetail("ai.errorFallback"),
+  };
+  const markdownLabels = (empty: string) => ({
+    edit: tDetail("markdown.edit"),
+    source: tDetail("markdown.source"),
+    preview: tDetail("markdown.preview"),
+    complete: tDetail("markdown.complete"),
+    cancel: tDetail("markdown.cancel"),
+    empty,
+  });
+  const pitfallLabels = {
+    label: tCommon("fields.pitfalls"),
+    addPlaceholder: tDetail("pitfallBlocks.addPlaceholder"),
+    add: tDetail("pitfallBlocks.add"),
+    edit: tDetail("pitfallBlocks.edit"),
+    remove: tDetail("pitfallBlocks.remove"),
+    complete: tDetail("pitfallBlocks.complete"),
+    cancel: tDetail("pitfallBlocks.cancel"),
+    empty: tDetail("pitfallBlocks.empty"),
+  };
+
   if (isPending || !session) return null;
   return (
     <div className="min-h-screen bg-canvas">
@@ -182,66 +200,72 @@ export default function NewNotePage() {
                   placeholder={tCommon("placeholders.titleExample")}
                 />
               </TextField>
-              <div className="space-y-2">
-                <TextField
-                  name="statement"
-                  value={note.statement}
-                  onChange={(value) => update("statement", value)}
-                >
-                  <FieldLabel kind="statement">{tCommon("fields.problemStatement")}</FieldLabel>
-                  <TextArea rows={5} className="!text-base leading-relaxed" />
-                </TextField>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    isPending={rewriting === "statement"}
-                    onPress={() => void rewrite("statement")}
-                  >
-                    {tDetail("rewriteWithAi")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="tertiary"
-                    isDisabled={note.statement === baseline.statement}
-                    onPress={() => reverseField("statement")}
-                  >
-                    {tDetail("reverse")}
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <TextField
-                  name="approach"
-                  value={note.approach}
-                  onChange={(value) => update("approach", value)}
-                >
-                  <FieldLabel kind="approach">{tCommon("fields.approach")}</FieldLabel>
-                  <TextArea rows={5} className="!text-base leading-relaxed" />
-                </TextField>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    isPending={rewriting === "approach"}
-                    onPress={() => void generateApproach()}
-                  >
-                    {tDetail("generateApproach")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="tertiary"
-                    isDisabled={note.approach === baseline.approach}
-                    onPress={() => reverseField("approach")}
-                  >
-                    {tDetail("reverse")}
-                  </Button>
-                </div>
-              </div>
+              <InlineMarkdownField
+                kind="statement"
+                label={tCommon("fields.problemStatement")}
+                value={note.statement}
+                isEditing={activeField === "statement"}
+                isEditDisabled={activePitfall !== null}
+                onEdit={() => beginField("statement")}
+                onChange={(value) => update("statement", value)}
+                onComplete={() => setActiveField(null)}
+                onCancel={() => cancelField("statement")}
+                labels={markdownLabels(tDetail("markdown.emptyStatement"))}
+                actions={
+                  <AiRewritePanel
+                    field="statement"
+                    value={note.statement}
+                    context={{ title: note.title }}
+                    quickActions={[
+                      {
+                        operation: "format_markdown",
+                        label: tDetail("ai.formatStatement"),
+                      },
+                    ]}
+                    onApply={(value) => update("statement", value)}
+                    labels={aiLabels}
+                  />
+                }
+              />
+              <InlineMarkdownField
+                kind="approach"
+                label={tCommon("fields.approach")}
+                value={note.approach}
+                isEditing={activeField === "approach"}
+                isEditDisabled={activePitfall !== null}
+                onEdit={() => beginField("approach")}
+                onChange={(value) => update("approach", value)}
+                onComplete={() => setActiveField(null)}
+                onCancel={() => cancelField("approach")}
+                labels={markdownLabels(tDetail("markdown.emptyApproach"))}
+                actions={
+                  <AiRewritePanel
+                    field="approach"
+                    value={note.approach}
+                    context={{
+                      title: note.title,
+                      statement: note.statement,
+                      tags: note.tags,
+                      code: note.code,
+                    }}
+                    quickActions={[
+                      {
+                        operation: "organize",
+                        label: tDetail("ai.organizeApproach"),
+                      },
+                    ]}
+                    externalActions={[
+                      {
+                        id: "generate",
+                        label: tDetail("generateApproach"),
+                        run: generateApproach,
+                      },
+                    ]}
+                    onApply={(value) => update("approach", value)}
+                    labels={aiLabels}
+                  />
+                }
+              />
               <div className="space-y-2">
                 <FieldLabel kind="code">{tCommon("fields.code")}</FieldLabel>
                 <CodeField
@@ -251,26 +275,6 @@ export default function NewNotePage() {
                   minRows={8}
                   maxRows={22}
                 />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    isPending={rewriting === "code"}
-                    onPress={() => void rewrite("code")}
-                  >
-                    {tDetail("rewriteWithAi")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="tertiary"
-                    isDisabled={note.code === baseline.code}
-                    onPress={() => reverseField("code")}
-                  >
-                    {tDetail("reverse")}
-                  </Button>
-                </div>
               </div>
               <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
                 <div className="space-y-5">
@@ -284,20 +288,43 @@ export default function NewNotePage() {
                     />
                   </div>
                 </div>
-                <TextField
-                  name="pitfalls"
-                  value={note.pitfalls.join("\n")}
-                  onChange={(value) => update("pitfalls", pitfallsFromText(value))}
-                >
-                  <FieldLabel kind="pitfalls">{tCommon("fields.pitfalls")}</FieldLabel>
-                  <TextArea
-                    rows={8}
-                    className="min-h-[12rem] !text-base leading-relaxed"
-                    placeholder={tCommon("placeholders.pitfallsOnePerLine")}
-                  />
-                </TextField>
+                <PitfallBlocks
+                  value={note.pitfalls}
+                  onChange={(value) => update("pitfalls", value)}
+                  activeIndex={activePitfall}
+                  onBeginEdit={beginPitfall}
+                  onCompleteEdit={() => setActivePitfall(null)}
+                  onCancelEdit={() => {
+                    update("pitfalls", pitfallSnapshot);
+                    setActivePitfall(null);
+                  }}
+                  labels={pitfallLabels}
+                  actions={(index, draftValue, setDraftValue) => (
+                    <AiRewritePanel
+                      key={index}
+                      field="pitfall"
+                      value={draftValue}
+                      context={{
+                        title: note.title,
+                        statement: note.statement,
+                        approach: note.approach,
+                      }}
+                      quickActions={[
+                        {
+                          operation: "clarify",
+                          label: tDetail("ai.clarifyPitfall"),
+                        },
+                        {
+                          operation: "shorten",
+                          label: tDetail("ai.shortenPitfall"),
+                        },
+                      ]}
+                      onApply={setDraftValue}
+                      labels={aiLabels}
+                    />
+                  )}
+                />
               </div>
-              <p className="text-sm text-muted">{tDetail("aiAssistHint")}</p>
               {error && <p className="text-sm text-red-400">{error}</p>}
               <Button type="submit" isPending={saving}>
                 {t("submit")}
