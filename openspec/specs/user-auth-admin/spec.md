@@ -14,6 +14,21 @@ The system SHALL authenticate users with email and password via Better Auth, wit
 - **WHEN** an anonymous visitor attempts to open a public sign-up flow
 - **THEN** the system does not provide a public registration path that creates accounts
 
+### Requirement: Cookie gate for protected app routes
+The frontend SHALL redirect unauthenticated visitors away from protected app routes (`/notes`, `/ask`, `/import`, `/settings`, and their subpaths) when no session cookie is present, before those pages render. Login, setup, and auth API routes remain reachable without a session. Cookie presence is an optimistic gate only; BFF and API endpoints remain the source of truth for authorization. Client session hooks used for page gating SHALL not treat a transient null `useSession()` value as logged-out when an explicit session check has already succeeded.
+
+#### Scenario: Unauthenticated visitor opens notes
+- **WHEN** a visitor without a session cookie requests `/notes` or another protected app route
+- **THEN** the response redirects to `/login` and the protected page content is not rendered
+
+#### Scenario: Authenticated visitor keeps access
+- **WHEN** a signed-in user with a session cookie requests a protected app route
+- **THEN** the route is allowed through to the app (API ownership checks still apply)
+
+#### Scenario: Post-login session not bounced by hook flicker
+- **WHEN** a user has just completed login and `getSession()` has confirmed a session, but `useSession()` briefly reports null during client hydration
+- **THEN** the client does not redirect that user back to `/login`
+
 ### Requirement: First-run admin bootstrap
 When no users exist, the system SHALL present a first-run setup that creates the first account as admin using email and password.
 

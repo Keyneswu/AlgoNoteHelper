@@ -4,48 +4,62 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
+type ClientSession = NonNullable<
+  ReturnType<typeof authClient.useSession>["data"]
+>;
+
 /**
  * Shared session gate for protected client pages.
  *
- * Waits for an explicit `getSession()` round-trip before treating "no session"
- * as logged-out. Relying only on `useSession()` can briefly report
- * `{ isPending: false, data: null }` on first paint and bounce a valid user
- * from `/notes` → `/login` (then login sees the cookie and sends them back).
+ * Always waits for an explicit `getSession()` round-trip before treating the
+ * user as logged-out. Do NOT also bounce on a briefly-null `useSession()` atom
+ * after that check succeeds — that recreates the login↔notes loop (sign-in
+ * cookie is real; client atom has not caught up yet).
  */
 export function useRequireSession() {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: session, isPending } = authClient.useSession();
+  const { data: hookSession } = authClient.useSession();
   const [gatePending, setGatePending] = useState(true);
+  const [verifiedSession, setVerifiedSession] = useState<ClientSession | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
-    // Re-gate on pathname change; defer setState so it is not sync in the effect body.
+    // Defer setState so it is not sync in the effect body (lint rule).
     void Promise.resolve().then(() => {
       if (cancelled) return;
       setGatePending(true);
-      return authClient.getSession().then(({ data }) => {
-        if (cancelled) return;
-        setGatePending(false);
-        if (!data && pathname !== "/login") {
-          router.replace("/login");
-        }
-      });
+      return authClient
+        .getSession()
+        .then(({ data }) => {
+          if (cancelled) return;
+          setVerifiedSession(data ?? null);
+          setGatePending(false);
+          if (!data && pathname !== "/login") {
+            router.replace("/login");
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setVerifiedSession(null);
+          setGatePending(false);
+          if (pathname !== "/login") {
+            router.replace("/login");
+          }
+        });
     });
     return () => {
       cancelled = true;
     };
   }, [pathname, router]);
 
-  useEffect(() => {
-    if (gatePending || isPending) return;
-    if (!session && pathname !== "/login") {
-      router.replace("/login");
-    }
-  }, [gatePending, isPending, pathname, router, session]);
+  // Prefer the explicit getSession result once the gate has settled.
+  const session = gatePending ? hookSession : verifiedSession;
 
   return {
     session,
-    isPending: isPending || gatePending,
+    isPending: gatePending,
   };
 }
