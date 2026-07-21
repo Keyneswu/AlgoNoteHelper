@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
@@ -10,7 +9,7 @@ import { AskRailToggle, type AskRailMode } from "@/components/AskRailToggle";
 import { AskRuntimeProvider } from "@/components/AskRuntimeProvider";
 import { AskSessionList } from "@/components/AskSessionList";
 import { AskThread } from "@/components/AskThread";
-import { authClient } from "@/lib/auth-client";
+import { useRequireSession } from "@/hooks/useRequireSession";
 import {
   createAskSession,
   deleteAskSession,
@@ -66,8 +65,7 @@ function upsertSessionInList(
 
 export default function AskPage() {
   const t = useTranslations("ask");
-  const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireSession();
 
   const [railMode, setRailMode] = useState<AskRailMode>("sessions");
   const [sessions, setSessions] = useState<AskSessionListItem[]>([]);
@@ -94,10 +92,6 @@ export default function AskPage() {
   useEffect(() => {
     setActiveSessionId(activeSessionId);
   }, [activeSessionId]);
-
-  useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [isPending, router, session]);
 
   const applySessionDetail = useCallback((detail: AskSessionDetail) => {
     setActiveSessionIdState(detail.id);

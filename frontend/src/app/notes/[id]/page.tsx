@@ -3,56 +3,43 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AlertDialog, Button, Card, Form, Input, TextField } from "@heroui/react";
-import { AiRewritePanel } from "@/components/AiRewritePanel";
+import { AlertDialog, Button, Card } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
-import { CodeField } from "@/components/CodeField";
-import { FieldLabel } from "@/components/FieldLabel";
-import { InlineMarkdownField } from "@/components/InlineMarkdownField";
-import { PitfallBlocks } from "@/components/PitfallBlocks";
 import { DifficultyBadge } from "@/components/DifficultyBadge";
-import { DifficultyPicker } from "@/components/DifficultyPicker";
+import { NoteEditorForm } from "@/components/NoteEditorForm";
 import { NoteTags } from "@/components/NoteTags";
 import { PracticeHistory } from "@/components/PracticeHistory";
-import { TagPicker } from "@/components/TagPicker";
+import { useNoteFieldEdit } from "@/hooks/useNoteFieldEdit";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
-import { authClient } from "@/lib/auth-client";
-import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
+import { useRequireSession } from "@/hooks/useRequireSession";
 import { clonePracticeNote, noteDraftIsDirty } from "@/lib/note-draft";
-import { normalizePitfalls } from "@/lib/pitfalls";
+import { deleteNote, getNote, updateNote } from "@/lib/notes-api";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
-
-type MarkdownField = "statement" | "approach";
 
 export default function NotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const t = useTranslations("notes.detail");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireSession();
   const codeLanguage = usePreferredCodeLanguage(!!session);
   const [note, setNote] = useState<PracticeNote | null>(null);
   const [savedNote, setSavedNote] = useState<PracticeNote | null>(null);
-  const [activeField, setActiveField] = useState<MarkdownField | null>(null);
-  const [fieldSnapshot, setFieldSnapshot] = useState("");
+  const { activeField, beginField, cancelField, completeField, setActiveField } =
+    useNoteFieldEdit(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [isPending, router, session]);
-
-  useEffect(() => {
     if (!session) return;
     void (async () => {
-      const response = await fetch(`/api/bff/notes/${id}`);
-      const data = (await response.json()) as PracticeNote | { error?: string };
-      if (!response.ok) setError((data as { error?: string }).error ?? t("errors.couldNotLoad"));
-      else {
-        const loaded = data as PracticeNote;
+      try {
+        const loaded = await getNote(id);
         setNote(clonePracticeNote(loaded));
         setSavedNote(clonePracticeNote(loaded));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("errors.couldNotLoad"));
       }
     })();
   }, [id, session, t]);
@@ -61,38 +48,21 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     setNote((current) => (current ? { ...current, [field]: value } : current));
   }
 
-  function beginField(field: MarkdownField) {
-    if (!note) return;
-    setFieldSnapshot(note[field]);
-    setActiveField(field);
-  }
-
-  function cancelField(field: MarkdownField) {
-    update(field, fieldSnapshot);
-    setActiveField(null);
-  }
-
   async function saveNote(andReturn: boolean) {
     if (!note) return;
     setSaving(true);
     setError("");
-    const response = await fetch(`/api/bff/notes/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...note,
-        difficulty: clampDifficulty(note.difficulty),
-        pitfalls: normalizePitfalls(note.pitfalls),
-      }),
-    });
-    const data = (await response.json()) as PracticeNote | { error?: string };
-    setSaving(false);
-    if (!response.ok) return setError((data as { error?: string }).error ?? t("errors.couldNotSave"));
-    const saved = data as PracticeNote;
-    setNote(clonePracticeNote(saved));
-    setSavedNote(clonePracticeNote(saved));
-    setActiveField(null);
-    if (andReturn) router.push("/notes");
+    try {
+      const saved = await updateNote(id, note);
+      setNote(clonePracticeNote(saved));
+      setSavedNote(clonePracticeNote(saved));
+      setActiveField(null);
+      if (andReturn) router.push("/notes");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("errors.couldNotSave"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -104,14 +74,13 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
     if (!note) return;
     setDeleting(true);
     setError("");
-    const response = await fetch(`/api/bff/notes/${id}`, { method: "DELETE" });
-    if (!response.ok) {
+    try {
+      await deleteNote(id);
+      router.replace("/notes");
+    } catch (err) {
       setDeleting(false);
-      const data = (await response.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? t("errors.couldNotDelete"));
-      return;
+      setError(err instanceof Error ? err.message : t("errors.couldNotDelete"));
     }
-    router.replace("/notes");
   }
 
   function discardDraft() {
@@ -122,33 +91,6 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
   }
 
   const dirty = noteDraftIsDirty(savedNote, note);
-  const aiLabels = {
-    apply: t("ai.apply"),
-    discard: t("ai.discard"),
-    undo: t("ai.undo"),
-    before: t("ai.before"),
-    after: t("ai.after"),
-    stale: t("ai.stale"),
-    errorFallback: t("ai.errorFallback"),
-  };
-  const markdownLabels = (empty: string) => ({
-    edit: t("markdown.edit"),
-    source: t("markdown.source"),
-    preview: t("markdown.preview"),
-    complete: t("markdown.complete"),
-    cancel: t("markdown.cancel"),
-    empty,
-    expand: t("markdown.expand"),
-    collapse: t("markdown.collapse"),
-  });
-  const pitfallLabels = {
-    label: tCommon("fields.pitfalls"),
-    add: t("pitfallBlocks.add"),
-    remove: t("pitfallBlocks.remove"),
-    empty: t("pitfallBlocks.empty"),
-    expand: t("pitfallBlocks.expand"),
-    collapse: t("pitfallBlocks.collapse"),
-  };
 
   if (isPending || !session) return null;
   return (
@@ -184,149 +126,75 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
         ) : (
           <Card className="border border-border bg-surface">
             <Card.Content>
-              <Form className="flex flex-col gap-5" onSubmit={submit}>
-                <TextField isRequired name="title" value={note.title} onChange={(value) => update("title", value)}>
-                  <FieldLabel kind="title">{tCommon("fields.title")}</FieldLabel>
-                  <Input className="!text-xl font-semibold leading-snug" />
-                </TextField>
-                <InlineMarkdownField
-                  kind="statement"
-                  label={tCommon("fields.problemStatement")}
-                  value={note.statement}
-                  isEditing={activeField === "statement"}
-                  onEdit={() => beginField("statement")}
-                  onChange={(value) => update("statement", value)}
-                  onComplete={() => setActiveField(null)}
-                  onCancel={() => cancelField("statement")}
-                  labels={markdownLabels(t("markdown.emptyStatement"))}
-                  actions={
-                    <AiRewritePanel
-                      field="statement"
-                      value={note.statement}
-                      context={{ title: note.title }}
-                      quickActions={[
-                        {
-                          operation: "format_markdown",
-                          label: t("ai.formatStatement"),
-                        },
-                      ]}
-                      onApply={(value) => update("statement", value)}
-                      labels={aiLabels}
-                    />
-                  }
-                />
-                <InlineMarkdownField
-                  kind="approach"
-                  label={tCommon("fields.approach")}
-                  value={note.approach}
-                  isEditing={activeField === "approach"}
-                  onEdit={() => beginField("approach")}
-                  onChange={(value) => update("approach", value)}
-                  onComplete={() => setActiveField(null)}
-                  onCancel={() => cancelField("approach")}
-                  labels={markdownLabels(t("markdown.emptyApproach"))}
-                  actions={
-                    <AiRewritePanel
-                      field="approach"
-                      value={note.approach}
-                      context={{
-                        title: note.title,
-                        statement: note.statement,
-                        tags: note.tags,
-                        code: note.code,
-                      }}
-                      quickActions={[
-                        {
-                          operation: "organize",
-                          label: t("ai.organizeApproach"),
-                        },
-                      ]}
-                      onApply={(value) => update("approach", value)}
-                      labels={aiLabels}
-                    />
-                  }
-                />
-                <div className="space-y-2">
-                  <FieldLabel kind="code">{tCommon("fields.code")}</FieldLabel>
-                  <CodeField
-                    value={note.code}
-                    onChange={(value) => update("code", value)}
-                    language={codeLanguage}
-                    minRows={8}
-                    maxRows={22}
-                  />
-                </div>
-                <PitfallBlocks
-                  value={note.pitfalls}
-                  onChange={(value) => update("pitfalls", value)}
-                  labels={pitfallLabels}
-                />
-                <div className="grid gap-5 sm:grid-cols-2 sm:items-start">
-                  <div className="space-y-5">
-                    <TagPicker value={note.tags} onChange={(tags) => update("tags", tags)} />
-                    <div className="space-y-2">
-                      <FieldLabel kind="difficulty">{tCommon("fields.difficulty")}</FieldLabel>
-                      <DifficultyPicker
-                        value={note.difficulty}
-                        onChange={(value: DifficultyLevel) => update("difficulty", value)}
-                        showLegend={false}
-                      />
-                    </div>
-                  </div>
+              <NoteEditorForm
+                note={note}
+                onChange={update}
+                codeLanguage={codeLanguage}
+                activeField={activeField}
+                onBeginField={(field) => beginField(field, note[field])}
+                onCompleteField={completeField}
+                onCancelField={(field) =>
+                  cancelField(field, (value) => update(field, value))
+                }
+                onSubmit={submit}
+                metaLayout="split"
+                sideSlot={
                   <PracticeHistory
                     dates={note.review_dates ?? []}
                     onChange={(dates) => update("review_dates", dates)}
                   />
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      isPending={saving}
-                      isDisabled={deleting}
-                      onPress={() => void saveNote(true)}
-                    >
-                      {t("saveAndReturn")}
-                    </Button>
+                }
+                footerSlot={
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        isPending={saving}
+                        isDisabled={deleting}
+                        onPress={() => void saveNote(true)}
+                      >
+                        {t("saveAndReturn")}
+                      </Button>
+                    </div>
+                    <AlertDialog>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        isDisabled={saving || deleting}
+                      >
+                        {t("delete")}
+                      </Button>
+                      <AlertDialog.Backdrop>
+                        <AlertDialog.Container>
+                          <AlertDialog.Dialog className="sm:max-w-[400px]">
+                            <AlertDialog.CloseTrigger />
+                            <AlertDialog.Header>
+                              <AlertDialog.Icon status="danger" />
+                              <AlertDialog.Heading>{t("deleteHeading")}</AlertDialog.Heading>
+                            </AlertDialog.Header>
+                            <AlertDialog.Body>
+                              <p>{t("deleteConfirm", { title: note.title })}</p>
+                            </AlertDialog.Body>
+                            <AlertDialog.Footer>
+                              <Button slot="close" variant="tertiary" isDisabled={deleting}>
+                                {t("deleteCancel")}
+                              </Button>
+                              <Button
+                                variant="danger"
+                                isPending={deleting}
+                                onPress={() => void confirmDelete()}
+                              >
+                                {t("delete")}
+                              </Button>
+                            </AlertDialog.Footer>
+                          </AlertDialog.Dialog>
+                        </AlertDialog.Container>
+                      </AlertDialog.Backdrop>
+                    </AlertDialog>
                   </div>
-                  <AlertDialog>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      isDisabled={saving || deleting}
-                    >
-                      {t("delete")}
-                    </Button>
-                    <AlertDialog.Backdrop>
-                      <AlertDialog.Container>
-                        <AlertDialog.Dialog className="sm:max-w-[400px]">
-                          <AlertDialog.CloseTrigger />
-                          <AlertDialog.Header>
-                            <AlertDialog.Icon status="danger" />
-                            <AlertDialog.Heading>{t("deleteHeading")}</AlertDialog.Heading>
-                          </AlertDialog.Header>
-                          <AlertDialog.Body>
-                            <p>{t("deleteConfirm", { title: note.title })}</p>
-                          </AlertDialog.Body>
-                          <AlertDialog.Footer>
-                            <Button slot="close" variant="tertiary" isDisabled={deleting}>
-                              {t("deleteCancel")}
-                            </Button>
-                            <Button
-                              variant="danger"
-                              isPending={deleting}
-                              onPress={() => void confirmDelete()}
-                            >
-                              {t("delete")}
-                            </Button>
-                          </AlertDialog.Footer>
-                        </AlertDialog.Dialog>
-                      </AlertDialog.Container>
-                    </AlertDialog.Backdrop>
-                  </AlertDialog>
-                </div>
-              </Form>
+                }
+              />
               {dirty && (
                 <div className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/35 bg-surface/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur">
                   <p className="text-sm font-medium text-foreground">

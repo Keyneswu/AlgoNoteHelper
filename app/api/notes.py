@@ -43,6 +43,7 @@ from app.services.notes_dedup import (
     build_similarity_embed_text,
     find_similar_notes,
 )
+from app.services.notes_query import append_tag_difficulty_filters, get_owned_note
 from app.services.preset_tags import NOTES_PAGE_SIZE, PRESET_TAG_ORDER
 
 router = APIRouter(prefix="/notes", tags=["notes"])
@@ -119,14 +120,7 @@ async def list_notes(
     title_q = (q or "").strip()
     if title_q:
         filters.append(PracticeNote.title.ilike(f"%{_escape_ilike(title_q)}%", escape="\\"))
-    if tags:
-        normalized = [tag.strip().lower() for tag in tags if tag.strip()]
-        if normalized:
-            filters.append(PracticeNote.tags.contains(normalized))
-    if difficulty:
-        levels = [level for level in difficulty if 1 <= level <= 3]
-        if levels:
-            filters.append(PracticeNote.difficulty.in_(levels))
+    append_tag_difficulty_filters(filters, tags=tags, difficulty=difficulty)
     if practiced_from is not None or practiced_to is not None:
         range_clauses = ["EXISTS (SELECT 1 FROM unnest(practice_notes.review_dates) AS d WHERE TRUE"]
         bind: dict[str, datetime] = {}
@@ -270,10 +264,7 @@ async def get_note(
     user_id: str = Depends(require_bridged_user),
     db: AsyncSession = Depends(get_db),
 ) -> PracticeNote:
-    note = await db.get(PracticeNote, note_id)
-    if not note or note.user_id != user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    return note
+    return await get_owned_note(db, note_id, user_id)
 
 
 @router.patch("/{note_id}", response_model=PracticeNoteOut)
@@ -283,9 +274,7 @@ async def update_note(
     user_id: str = Depends(require_bridged_user),
     db: AsyncSession = Depends(get_db),
 ) -> PracticeNote:
-    note = await db.get(PracticeNote, note_id)
-    if not note or note.user_id != user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    note = await get_owned_note(db, note_id, user_id)
     data = body.model_dump(exclude_unset=True)
     if "title" in data and data["title"] is not None and data["title"] != note.title:
         data["title"] = await allocate_unique_title(
@@ -306,9 +295,7 @@ async def merge_note(
     user_id: str = Depends(require_bridged_user),
     db: AsyncSession = Depends(get_db),
 ) -> PracticeNote:
-    note = await db.get(PracticeNote, note_id)
-    if not note or note.user_id != user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    note = await get_owned_note(db, note_id, user_id)
 
     title = body.title.strip() or note.title
     if title != note.title:
@@ -347,9 +334,7 @@ async def delete_note(
     user_id: str = Depends(require_bridged_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    note = await db.get(PracticeNote, note_id)
-    if not note or note.user_id != user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    note = await get_owned_note(db, note_id, user_id)
     await db.delete(note)
     await db.commit()
 

@@ -1,70 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Card, Form, Input, TextField } from "@heroui/react";
-import { AiRewritePanel } from "@/components/AiRewritePanel";
+import { Button, Card } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
-import { CodeField } from "@/components/CodeField";
-import { FieldLabel } from "@/components/FieldLabel";
-import { InlineMarkdownField } from "@/components/InlineMarkdownField";
-import { PitfallBlocks } from "@/components/PitfallBlocks";
-import { DifficultyPicker } from "@/components/DifficultyPicker";
-import { TagPicker } from "@/components/TagPicker";
+import { NoteEditorForm } from "@/components/NoteEditorForm";
+import { useNoteFieldEdit } from "@/hooks/useNoteFieldEdit";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
-import { authClient } from "@/lib/auth-client";
-import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
+import { useRequireSession } from "@/hooks/useRequireSession";
+import {
+  createNote,
+  fetchSimilarNotes,
+} from "@/lib/notes-api";
 import { normalizePitfalls } from "@/lib/pitfalls";
 import { noteToDraft, saveResolveSession } from "@/lib/resolve-store";
-import { emptyNote, type NoteDraft, type PracticeNote } from "@/lib/types";
-
-type MarkdownField = "statement" | "approach";
+import { emptyNote, type NoteDraft } from "@/lib/types";
 
 export default function NewNotePage() {
   const t = useTranslations("notes.new");
-  const tDetail = useTranslations("notes.detail");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireSession();
   const codeLanguage = usePreferredCodeLanguage(!!session);
   const [note, setNote] = useState<NoteDraft>(emptyNote);
-  const [activeField, setActiveField] = useState<MarkdownField | null>("statement");
-  const [fieldSnapshot, setFieldSnapshot] = useState("");
+  const { activeField, beginField, cancelField, completeField } = useNoteFieldEdit("statement");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [isPending, router, session]);
-
   function update(field: keyof NoteDraft, value: NoteDraft[keyof NoteDraft]) {
     setNote((current) => ({ ...current, [field]: value }));
-  }
-
-  function beginField(field: MarkdownField) {
-    setFieldSnapshot(note[field]);
-    setActiveField(field);
-  }
-
-  function cancelField(field: MarkdownField) {
-    update(field, fieldSnapshot);
-    setActiveField(null);
-  }
-
-  async function createNote(draft: NoteDraft) {
-    const response = await fetch("/api/bff/notes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...draft,
-        difficulty: clampDifficulty(draft.difficulty),
-        pitfalls: normalizePitfalls(draft.pitfalls),
-      }),
-    });
-    const data = (await response.json()) as PracticeNote & { error?: string };
-    if (!response.ok) throw new Error(data.error ?? t("errors.couldNotCreate"));
-    return data;
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -72,19 +37,7 @@ export default function NewNotePage() {
     setSaving(true);
     setError("");
     try {
-      const similarResponse = await fetch("/api/bff/notes/similar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: note.title,
-          statement: note.statement,
-          top_k: 3,
-        }),
-      });
-      const similarData = (await similarResponse.json()) as {
-        matches?: { note: PracticeNote; score: number }[];
-      };
-      const matches = similarResponse.ok ? (similarData.matches ?? []) : [];
+      const matches = await fetchSimilarNotes(note, 3);
       if (matches.length) {
         saveResolveSession({
           origin: "new",
@@ -108,34 +61,6 @@ export default function NewNotePage() {
     setSaving(false);
   }
 
-  const aiLabels = {
-    apply: tDetail("ai.apply"),
-    discard: tDetail("ai.discard"),
-    undo: tDetail("ai.undo"),
-    before: tDetail("ai.before"),
-    after: tDetail("ai.after"),
-    stale: tDetail("ai.stale"),
-    errorFallback: tDetail("ai.errorFallback"),
-  };
-  const markdownLabels = (empty: string) => ({
-    edit: tDetail("markdown.edit"),
-    source: tDetail("markdown.source"),
-    preview: tDetail("markdown.preview"),
-    complete: tDetail("markdown.complete"),
-    cancel: tDetail("markdown.cancel"),
-    empty,
-    expand: tDetail("markdown.expand"),
-    collapse: tDetail("markdown.collapse"),
-  });
-  const pitfallLabels = {
-    label: tCommon("fields.pitfalls"),
-    add: tDetail("pitfallBlocks.add"),
-    remove: tDetail("pitfallBlocks.remove"),
-    empty: tDetail("pitfallBlocks.empty"),
-    expand: tDetail("pitfallBlocks.expand"),
-    collapse: tDetail("pitfallBlocks.collapse"),
-  };
-
   if (isPending || !session) return null;
   return (
     <div className="min-h-screen bg-canvas">
@@ -156,102 +81,26 @@ export default function NewNotePage() {
         <h1 className="mb-6 text-3xl font-semibold text-foreground">{t("heading")}</h1>
         <Card className="border border-border bg-surface">
           <Card.Content>
-            <Form className="flex flex-col gap-5" onSubmit={submit}>
-              <TextField isRequired name="title" value={note.title} onChange={(value) => update("title", value)}>
-                <FieldLabel kind="title">{tCommon("fields.title")}</FieldLabel>
-                <Input
-                  className="!text-xl font-semibold leading-snug"
-                  placeholder={tCommon("placeholders.titleExample")}
-                />
-              </TextField>
-              <InlineMarkdownField
-                kind="statement"
-                label={tCommon("fields.problemStatement")}
-                value={note.statement}
-                isEditing={activeField === "statement"}
-                onEdit={() => beginField("statement")}
-                onChange={(value) => update("statement", value)}
-                onComplete={() => setActiveField(null)}
-                onCancel={() => cancelField("statement")}
-                labels={markdownLabels(tDetail("markdown.emptyStatement"))}
-                actions={
-                  <AiRewritePanel
-                    field="statement"
-                    value={note.statement}
-                    context={{ title: note.title }}
-                    quickActions={[
-                      {
-                        operation: "format_markdown",
-                        label: tDetail("ai.formatStatement"),
-                      },
-                    ]}
-                    onApply={(value) => update("statement", value)}
-                    labels={aiLabels}
-                  />
-                }
-              />
-              <InlineMarkdownField
-                kind="approach"
-                label={tCommon("fields.approach")}
-                value={note.approach}
-                isEditing={activeField === "approach"}
-                onEdit={() => beginField("approach")}
-                onChange={(value) => update("approach", value)}
-                onComplete={() => setActiveField(null)}
-                onCancel={() => cancelField("approach")}
-                labels={markdownLabels(tDetail("markdown.emptyApproach"))}
-                actions={
-                  <AiRewritePanel
-                    field="approach"
-                    value={note.approach}
-                    context={{
-                      title: note.title,
-                      statement: note.statement,
-                      tags: note.tags,
-                      code: note.code,
-                    }}
-                    quickActions={[
-                      {
-                        operation: "organize",
-                        label: tDetail("ai.organizeApproach"),
-                      },
-                    ]}
-                    onApply={(value) => update("approach", value)}
-                    labels={aiLabels}
-                  />
-                }
-              />
-              <div className="space-y-2">
-                <FieldLabel kind="code">{tCommon("fields.code")}</FieldLabel>
-                <CodeField
-                  value={note.code}
-                  onChange={(value) => update("code", value)}
-                  language={codeLanguage}
-                  minRows={8}
-                  maxRows={22}
-                />
-              </div>
-              <PitfallBlocks
-                value={note.pitfalls}
-                onChange={(value) => update("pitfalls", value)}
-                labels={pitfallLabels}
-              />
-              <div className="space-y-5 sm:max-w-md">
-                <TagPicker value={note.tags} onChange={(tags) => update("tags", tags)} />
-                <div className="space-y-2">
-                  <FieldLabel kind="difficulty">{tCommon("fields.difficulty")}</FieldLabel>
-                  <DifficultyPicker
-                    value={note.difficulty}
-                    onChange={(value: DifficultyLevel) => update("difficulty", value)}
-                    showLegend={false}
-                  />
-                </div>
-              </div>
-              {error && <p className="text-sm text-red-400">{error}</p>}
-              <Button type="submit" isPending={saving}>
-                {t("submit")}
-              </Button>
-            </Form>
+            <NoteEditorForm
+              note={note}
+              onChange={update}
+              codeLanguage={codeLanguage}
+              activeField={activeField}
+              onBeginField={(field) => beginField(field, note[field])}
+              onCompleteField={completeField}
+              onCancelField={(field) =>
+                cancelField(field, (value) => update(field, value))
+              }
+              onSubmit={submit}
+              metaLayout="stack"
+              titleInputPlaceholder={tCommon("placeholders.titleExample")}
+              error={error}
+              footerSlot={
+                <Button type="submit" isPending={saving}>
+                  {t("submit")}
+                </Button>
+              }
+            />
           </Card.Content>
         </Card>
       </main>

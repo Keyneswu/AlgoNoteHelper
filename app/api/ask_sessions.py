@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.retrieval import _load_context_notes
 from app.core.security import require_bridged_user
 from app.db.session import get_db
 from app.models.entities import AskChatMessage, AskChatSession
@@ -22,6 +21,7 @@ from app.schemas.ask_sessions import (
     is_default_session_title,
 )
 from app.schemas.notes import PracticeNoteOut
+from app.services.notes_query import load_context_notes
 
 router = APIRouter(prefix="/ask/sessions", tags=["ask-sessions"])
 
@@ -36,7 +36,7 @@ async def _owned_context_note_ids(
     user_id: str,
     note_ids: list[int],
 ) -> list[int]:
-    notes = await _load_context_notes(db, user_id=user_id, note_ids=note_ids)
+    notes = await load_context_notes(db, user_id=user_id, note_ids=note_ids)
     return [n.id for n in notes]
 
 
@@ -110,7 +110,7 @@ async def create_session(
     db.add(session)
     await db.commit()
     await db.refresh(session)
-    context_notes = await _load_context_notes(
+    context_notes = await load_context_notes(
         db, user_id=user_id, note_ids=session.context_note_ids or []
     )
     return AskChatSessionOut(
@@ -135,7 +135,7 @@ async def get_session(
     session = await _get_owned_session(
         db, session_id=session_id, user_id=user_id, with_messages=True
     )
-    context_notes = await _load_context_notes(
+    context_notes = await load_context_notes(
         db, user_id=user_id, note_ids=session.context_note_ids or []
     )
     return _session_out(session, context_notes)
@@ -183,7 +183,7 @@ async def update_session(
     session = await _get_owned_session(
         db, session_id=session_id, user_id=user_id, with_messages=True
     )
-    context_notes = await _load_context_notes(
+    context_notes = await load_context_notes(
         db, user_id=user_id, note_ids=session.context_note_ids or []
     )
     return _session_out(session, context_notes)

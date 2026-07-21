@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Card, Form, Input, Label, ListBox, Select, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
+import { useRequireSession } from "@/hooks/useRequireSession";
 import { authClient } from "@/lib/auth-client";
+import { getLlmConfig, updateLlmConfig, verifyLlmConfig } from "@/lib/llm-config";
 import type { LlmConfig, LlmConfigUpdate, PreferredCodeLanguage } from "@/lib/types";
 
 type AdminUser = { id: string; name: string; email: string; role?: string | null };
@@ -29,8 +30,7 @@ const blankConfig: LlmConfig = {
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
-  const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireSession();
   const [config, setConfig] = useState<LlmConfig>(blankConfig);
   const [chatKey, setChatKey] = useState("");
   const [embeddingKey, setEmbeddingKey] = useState("");
@@ -54,16 +54,13 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [isPending, router, session]);
-
-  useEffect(() => {
     if (!session) return;
     void (async () => {
-      const response = await fetch("/api/bff/llm-config");
-      const data = (await response.json()) as LlmConfig & { error?: string };
-      if (response.ok) setConfig(data);
-      else setMessage(data.error ?? t("errors.couldNotLoadLlm"));
+      try {
+        setConfig(await getLlmConfig());
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : t("errors.couldNotLoadLlm"));
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
@@ -76,32 +73,31 @@ export default function SettingsPage() {
       ...(chatKey ? { chat_api_key: chatKey } : {}),
       ...(embeddingKey ? { embedding_api_key: embeddingKey } : {}),
     };
-    const response = await fetch("/api/bff/llm-config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = (await response.json()) as LlmConfig & { error?: string };
-    setSaving(false);
-    if (!response.ok) return setMessage(data.error ?? t("errors.couldNotSave"));
-    setConfig(data);
-    setChatKey("");
-    setEmbeddingKey("");
-    setMessage(t("messages.settingsSaved"));
+    try {
+      const data = await updateLlmConfig(body);
+      setConfig(data);
+      setChatKey("");
+      setEmbeddingKey("");
+      setMessage(t("messages.settingsSaved"));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t("errors.couldNotSave"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function verify(kind: "chat" | "embedding") {
     setSaving(true);
     setMessage("");
-    const response = await fetch("/api/bff/llm-config/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind }),
-    });
-    const data = (await response.json()) as { ok?: boolean; message?: string; error?: string };
-    setSaving(false);
-    setMessage(data.message ?? data.error ?? t("errors.verificationFailed"));
-    if (data.ok) setConfig((current) => ({ ...current, [`${kind}_verified`]: true }));
+    try {
+      const data = await verifyLlmConfig(kind);
+      setMessage(data.message || t("errors.verificationFailed"));
+      if (data.ok) setConfig((current) => ({ ...current, [`${kind}_verified`]: true }));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t("errors.verificationFailed"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function changeOwnPassword(event: React.FormEvent<HTMLFormElement>) {

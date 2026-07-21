@@ -6,6 +6,12 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entities import PracticeNote
+from app.services.vector_search import (
+    embedding_distance_sql,
+    embedding_score_sql,
+    embedding_within_distance_sql,
+    vector_literal,
+)
 
 # Cosine similarity = 1 - (<=> distance). Keep matches at or above this score.
 SIMILARITY_THRESHOLD = 0.72
@@ -86,18 +92,19 @@ async def find_similar_notes(
     threshold: float = SIMILARITY_THRESHOLD,
 ) -> list[tuple[PracticeNote, float]]:
     max_distance = 1.0 - threshold
-    vec_literal = "[" + ",".join(str(float(x)) for x in query_vec) + "]"
+    vec_lit = vector_literal(query_vec)
+    dist = embedding_distance_sql(vec_lit)
     stmt = (
         select(
             PracticeNote,
-            text(f"1 - (embedding <=> '{vec_literal}'::vector) AS score"),
+            text(f"{embedding_score_sql(vec_lit)} AS score"),
         )
         .where(
             PracticeNote.user_id == user_id,
             PracticeNote.embedding.is_not(None),
-            text(f"(embedding <=> '{vec_literal}'::vector) <= {max_distance}"),
+            text(embedding_within_distance_sql(vec_lit, max_distance)),
         )
-        .order_by(text(f"embedding <=> '{vec_literal}'::vector"))
+        .order_by(text(dist))
         .limit(top_k)
     )
     result = await db.execute(stmt)

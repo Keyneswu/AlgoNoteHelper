@@ -1,13 +1,9 @@
-import type { NoteDraft, PracticeNote } from "@/lib/types";
-
-export type SimilarMatchSummary = {
-  note: PracticeNote;
-  score: number;
-};
+import type { SimilarMatch } from "@/lib/notes-api";
+import type { NoteDraft } from "@/lib/types";
 
 export type ImportCandidate = NoteDraft & {
   key: string;
-  matches?: SimilarMatchSummary[];
+  matches?: SimilarMatch[];
   /** Set after resolve Save merge — commit must skip this candidate */
   mergedNoteId?: number;
 };

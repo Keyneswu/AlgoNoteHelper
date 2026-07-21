@@ -20,6 +20,8 @@ from app.services.llm import (
     require_chat_config,
     require_embedding_config,
 )
+from app.services.notes_query import append_tag_difficulty_filters, load_context_notes
+from app.services.vector_search import embedding_distance_sql, vector_literal
 
 router = APIRouter(prefix="/ask", tags=["ask"])
 
@@ -33,15 +35,7 @@ EMPTY_NOTES_ANSWER = "No relevant notes were found for your question."
 
 def _apply_ask_filters(filters: list[Any], body: AskRequest, user_id: str) -> list[Any]:
     filters = [PracticeNote.user_id == user_id, PracticeNote.embedding.is_not(None), *filters]
-    if body.tags:
-        normalized = [tag.strip().lower() for tag in body.tags if tag.strip()]
-        if normalized:
-            filters.append(PracticeNote.tags.contains(normalized))
-    if body.difficulty:
-        levels = [level for level in body.difficulty if 1 <= level <= 3]
-        if levels:
-            filters.append(PracticeNote.difficulty.in_(levels))
-    return filters
+    return append_tag_difficulty_filters(filters, tags=body.tags, difficulty=body.difficulty)
 
 
 async def _retrieve_notes(
@@ -52,36 +46,15 @@ async def _retrieve_notes(
     query_vec: list[float],
 ) -> list[PracticeNote]:
     filters = _apply_ask_filters([], body, user_id)
-    vec_literal = "[" + ",".join(str(float(x)) for x in query_vec) + "]"
+    vec_lit = vector_literal(query_vec)
     stmt = (
         select(PracticeNote)
         .where(and_(*filters))
-        .order_by(text(f"embedding <=> '{vec_literal}'::vector"))
+        .order_by(text(embedding_distance_sql(vec_lit)))
         .limit(body.top_k)
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
-
-
-async def _load_context_notes(
-    db: AsyncSession,
-    *,
-    user_id: str,
-    note_ids: list[int],
-) -> list[PracticeNote]:
-    """Load owned notes for Context Bar ids; ignore missing / non-owned ids."""
-    if not note_ids:
-        return []
-    # Preserve client order when possible.
-    unique_ids = list(dict.fromkeys(note_ids))
-    result = await db.execute(
-        select(PracticeNote).where(
-            PracticeNote.user_id == user_id,
-            PracticeNote.id.in_(unique_ids),
-        )
-    )
-    by_id = {n.id: n for n in result.scalars().all()}
-    return [by_id[i] for i in unique_ids if i in by_id]
 
 
 def _notes_out(notes: list[PracticeNote]) -> list[PracticeNoteOut]:
@@ -148,7 +121,7 @@ async def _prepare_ask_turn(
         model=emb_cfg.embedding_model,
         text=body.question,
     )
-    context_notes = await _load_context_notes(
+    context_notes = await load_context_notes(
         db, user_id=user_id, note_ids=body.context_note_ids
     )
     retrieved = await _retrieve_notes(db, user_id=user_id, body=body, query_vec=query_vec)

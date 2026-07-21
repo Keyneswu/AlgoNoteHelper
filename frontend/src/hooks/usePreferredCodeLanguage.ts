@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getLlmConfig } from "@/lib/llm-config";
 import type { PreferredCodeLanguage } from "@/lib/types";
 
 function isPreferredCodeLanguage(value: unknown): value is PreferredCodeLanguage {
@@ -15,9 +16,7 @@ export function usePreferredCodeLanguage(enabled = true): PreferredCodeLanguage 
     if (!enabled) return;
     void (async () => {
       try {
-        const response = await fetch("/api/bff/llm-config");
-        if (!response.ok) return;
-        const data = (await response.json()) as { preferred_code_language?: unknown };
+        const data = await getLlmConfig();
         if (isPreferredCodeLanguage(data.preferred_code_language)) {
           setLanguage(data.preferred_code_language);
         }

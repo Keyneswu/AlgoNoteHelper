@@ -1,3 +1,4 @@
+import { bffFetch } from "@/lib/bff";
 import type { PracticeNote } from "@/lib/types";
 
 /** Mirrors backend `AskChatMessageOut` / write shape (snake_case from API). */
@@ -54,11 +55,6 @@ const SESSIONS_BASE = "/api/bff/ask/sessions";
 
 const NO_STORE: RequestInit = { cache: "no-store" };
 
-async function readJsonError(response: Response): Promise<string> {
-  const data = (await response.json().catch(() => ({}))) as { error?: string };
-  return data.error || `Request failed (${response.status})`;
-}
-
 function asSessionDetail(data: unknown, action: string): AskSessionDetail {
   if (!data || typeof data !== "object" || typeof (data as AskSessionDetail).id !== "number") {
     throw new Error(`${action} returned an invalid session payload`);
@@ -75,50 +71,40 @@ function asSessionList(data: unknown): AskSessionListOut {
 }
 
 export async function listAskSessions(): Promise<AskSessionListOut> {
-  const response = await fetch(SESSIONS_BASE, NO_STORE);
-  if (!response.ok) throw new Error(await readJsonError(response));
-  return asSessionList(await response.json());
+  return asSessionList(await bffFetch<unknown>(SESSIONS_BASE, NO_STORE));
 }
 
 export async function createAskSession(
   body?: AskSessionCreateBody,
 ): Promise<AskSessionDetail> {
-  const response = await fetch(SESSIONS_BASE, {
+  const data = await bffFetch<unknown>(SESSIONS_BASE, {
     ...NO_STORE,
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body ?? {}),
   });
-  if (!response.ok) throw new Error(await readJsonError(response));
-  return asSessionDetail(await response.json(), "createAskSession");
+  return asSessionDetail(data, "createAskSession");
 }
 
 export async function getAskSession(id: number): Promise<AskSessionDetail> {
-  const response = await fetch(`${SESSIONS_BASE}/${id}`, NO_STORE);
-  if (!response.ok) throw new Error(await readJsonError(response));
-  return asSessionDetail(await response.json(), "getAskSession");
+  const data = await bffFetch<unknown>(`${SESSIONS_BASE}/${id}`, NO_STORE);
+  return asSessionDetail(data, "getAskSession");
 }
 
 export async function updateAskSession(
   id: number,
   body: AskSessionUpdateBody,
 ): Promise<AskSessionDetail> {
-  const response = await fetch(`${SESSIONS_BASE}/${id}`, {
+  const data = await bffFetch<unknown>(`${SESSIONS_BASE}/${id}`, {
     ...NO_STORE,
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(await readJsonError(response));
-  return asSessionDetail(await response.json(), "updateAskSession");
+  return asSessionDetail(data, "updateAskSession");
 }
 
 export async function deleteAskSession(id: number): Promise<void> {
-  const response = await fetch(`${SESSIONS_BASE}/${id}`, {
+  await bffFetch<undefined>(`${SESSIONS_BASE}/${id}`, {
     ...NO_STORE,
     method: "DELETE",
   });
-  if (!response.ok && response.status !== 204) {
-    throw new Error(await readJsonError(response));
-  }
 }

@@ -22,7 +22,7 @@ import { AppNav } from "@/components/AppNav";
 import { DifficultyMultiSelect } from "@/components/DifficultyMultiSelect";
 import { NoteCard } from "@/components/NoteCard";
 import { TagPicker } from "@/components/TagPicker";
-import { authClient } from "@/lib/auth-client";
+import { useRequireSession } from "@/hooks/useRequireSession";
 import { ALL_DIFFICULTY_LEVELS, type DifficultyLevel } from "@/lib/difficulty";
 import type { PracticeNote } from "@/lib/types";
 
@@ -165,7 +165,7 @@ function NotesPageContent() {
   const tCommon = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireSession();
 
   const initial = useMemo(() => {
     const title = searchParams.get("q")?.trim() ?? "";
@@ -201,10 +201,6 @@ function NotesPageContent() {
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const skipUrlWriteRef = useRef(true);
-
-  useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [isPending, router, session]);
 
   // Keep drafts/committed in sync when URL changes (back/forward).
   useEffect(() => {

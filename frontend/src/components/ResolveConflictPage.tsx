@@ -10,9 +10,11 @@ import { FieldLabel } from "@/components/FieldLabel";
 import { DifficultyPicker } from "@/components/DifficultyPicker";
 import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
-import { authClient } from "@/lib/auth-client";
+import { useRequireSession } from "@/hooks/useRequireSession";
+import { bffFetch } from "@/lib/bff";
 import { clampDifficulty, type DifficultyLevel } from "@/lib/difficulty";
 import { loadImportUiState, saveImportUiState } from "@/lib/import-store";
+import { createNote, type SimilarMatch } from "@/lib/notes-api";
 import { normalizePitfalls, pitfallsFromText } from "@/lib/pitfalls";
 import {
   buildMergeCanvas,
@@ -20,7 +22,6 @@ import {
   loadResolveSession,
   noteToDraft,
   type ResolveSession,
-  type SimilarMatch,
 } from "@/lib/resolve-store";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
 
@@ -34,7 +35,7 @@ export function ResolveConflictPage() {
   const t = useTranslations("resolve");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireSession();
   const codeLanguage = usePreferredCodeLanguage(!!session);
 
   const [payload, setPayload] = useState<ResolveSession | null>(null);
@@ -46,10 +47,6 @@ export function ResolveConflictPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [mergingField, setMergingField] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [isPending, router, session]);
 
   useEffect(() => {
     const stored = loadResolveSession();
@@ -112,26 +109,25 @@ export function ResolveConflictPage() {
 
     setMergingField(field);
     setError("");
-    const response = await fetch("/api/bff/notes/ai-merge", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        field,
-        existing: existingText,
-        incoming: incomingText,
-      }),
-    });
-    const data = (await response.json()) as { merged?: string; error?: string };
-    setMergingField(null);
-    if (!response.ok) {
-      setError(data.error ?? t("errors.couldNotAiMerge"));
-      return;
-    }
-    const merged = data.merged ?? "";
-    if (field === "pitfalls") {
-      updateCanvas("pitfalls", normalizePitfalls(merged.split("\n")));
-    } else {
-      updateCanvas(field, merged);
+    try {
+      const data = await bffFetch<{ merged?: string }>("/api/bff/notes/ai-merge", {
+        method: "POST",
+        body: JSON.stringify({
+          field,
+          existing: existingText,
+          incoming: incomingText,
+        }),
+      });
+      const merged = data.merged ?? "";
+      if (field === "pitfalls") {
+        updateCanvas("pitfalls", normalizePitfalls(merged.split("\n")));
+      } else {
+        updateCanvas(field, merged);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("errors.couldNotAiMerge"));
+    } finally {
+      setMergingField(null);
     }
   }
 
@@ -202,22 +198,14 @@ export function ResolveConflictPage() {
     if (!incoming) return;
     setBusy(true);
     setError("");
-    const response = await fetch("/api/bff/notes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...incoming,
-        difficulty: clampDifficulty(incoming.difficulty),
-        pitfalls: normalizePitfalls(incoming.pitfalls),
-      }),
-    });
-    const data = (await response.json()) as PracticeNote & { error?: string };
-    setBusy(false);
-    if (!response.ok) {
-      setError(data.error ?? t("errors.couldNotCreate"));
-      return;
+    try {
+      const created = await createNote(incoming);
+      returnToOrigin({ createdNoteId: created.id });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("errors.couldNotCreate"));
+    } finally {
+      setBusy(false);
     }
-    returnToOrigin({ createdNoteId: data.id });
   }
 
   function goBack() {

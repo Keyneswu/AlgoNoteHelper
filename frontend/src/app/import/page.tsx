@@ -12,7 +12,8 @@ import { DifficultyPicker } from "@/components/DifficultyPicker";
 import { NoteTags } from "@/components/NoteTags";
 import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
-import { authClient } from "@/lib/auth-client";
+import { useRequireSession } from "@/hooks/useRequireSession";
+import { bffFetch } from "@/lib/bff";
 import {
   clearImportUiState,
   loadImportUiState,
@@ -20,32 +21,16 @@ import {
   type ImportCandidate,
 } from "@/lib/import-store";
 import { clampDifficulty, getDifficultyMeta, type DifficultyLevel } from "@/lib/difficulty";
+import { fetchSimilarNotes } from "@/lib/notes-api";
 import { normalizePitfalls, pitfallsFromText } from "@/lib/pitfalls";
 import { noteToDraft, saveResolveSession } from "@/lib/resolve-store";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
-
-type SimilarResponse = {
-  matches?: { note: PracticeNote; score: number }[];
-  error?: string;
-};
-
-async function fetchSimilar(draft: NoteDraft) {
-  if (!draft.title.trim()) return [] as { note: PracticeNote; score: number }[];
-  const response = await fetch("/api/bff/notes/similar", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title: draft.title, statement: draft.statement, top_k: 3 }),
-  });
-  if (!response.ok) return [];
-  const data = (await response.json()) as SimilarResponse;
-  return data.matches ?? [];
-}
 
 export default function ImportPage() {
   const t = useTranslations("import");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireSession();
   const codeLanguage = usePreferredCodeLanguage(!!session);
 
   const initial = loadImportUiState();
@@ -66,38 +51,35 @@ export default function ImportPage() {
     });
   }, [markdown, candidates, expandedKeys, error]);
 
-  useEffect(() => {
-    if (!isPending && !session) router.replace("/login");
-  }, [isPending, router, session]);
-
   async function extract() {
     setLoading(true);
     setError("");
-    const response = await fetch("/api/bff/notes/import/extract", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown }),
-    });
-    const data = (await response.json()) as { candidates?: NoteDraft[]; error?: string };
-    if (!response.ok) {
-      setLoading(false);
-      return setError(data.error ?? t("errors.couldNotExtract"));
-    }
-    setExpandedKeys(new Set());
-    const withKeys: ImportCandidate[] = (data.candidates ?? []).map((candidate) => ({
-      ...candidate,
-      key: crypto.randomUUID(),
-      difficulty: clampDifficulty(candidate.difficulty),
-      matches: [],
-    }));
-    const withMatches = await Promise.all(
-      withKeys.map(async (candidate) => ({
+    try {
+      const data = await bffFetch<{ candidates?: NoteDraft[] }>("/api/bff/notes/import/extract", {
+        method: "POST",
+        body: JSON.stringify({ markdown }),
+      });
+      setExpandedKeys(new Set());
+      const withKeys: ImportCandidate[] = (data.candidates ?? []).map((candidate) => ({
         ...candidate,
-        matches: await fetchSimilar(candidate),
-      })),
-    );
-    setCandidates(withMatches);
-    setLoading(false);
+        key: crypto.randomUUID(),
+        difficulty: clampDifficulty(candidate.difficulty),
+        matches: [],
+      }));
+      const withMatches = await Promise.all(
+        withKeys.map(async (candidate) => ({
+          ...candidate,
+          matches: candidate.title.trim()
+            ? await fetchSimilarNotes(candidate)
+            : [],
+        })),
+      );
+      setCandidates(withMatches);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("errors.couldNotExtract"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openResolve(candidate: ImportCandidate) {
@@ -139,29 +121,31 @@ export default function ImportPage() {
       router.push("/notes");
       return;
     }
-    const response = await fetch("/api/bff/notes/import/commit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        candidates: pending.map((candidate) => {
-          const draft = noteToDraft(candidate);
-          return {
-            ...draft,
-            difficulty: clampDifficulty(draft.difficulty),
-            pitfalls: normalizePitfalls(draft.pitfalls),
-          };
+    try {
+      await bffFetch<PracticeNote[]>("/api/bff/notes/import/commit", {
+        method: "POST",
+        body: JSON.stringify({
+          candidates: pending.map((candidate) => {
+            const draft = noteToDraft(candidate);
+            return {
+              ...draft,
+              difficulty: clampDifficulty(draft.difficulty),
+              pitfalls: normalizePitfalls(draft.pitfalls),
+            };
+          }),
         }),
-      }),
-    });
-    const data = (await response.json()) as PracticeNote[] | { error?: string };
-    setLoading(false);
-    if (!response.ok) return setError((data as { error?: string }).error ?? t("errors.couldNotImport"));
-    clearImportUiState();
-    setMarkdown("");
-    setCandidates([]);
-    setExpandedKeys(new Set());
-    setError("");
-    router.push("/notes");
+      });
+      clearImportUiState();
+      setMarkdown("");
+      setCandidates([]);
+      setExpandedKeys(new Set());
+      setError("");
+      router.push("/notes");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("errors.couldNotImport"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (isPending || !session) return null;

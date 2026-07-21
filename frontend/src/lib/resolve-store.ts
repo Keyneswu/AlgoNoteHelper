@@ -1,12 +1,10 @@
+import type { SimilarMatch } from "@/lib/notes-api";
 import type { NoteDraft, PracticeNote } from "@/lib/types";
 import { normalizePitfalls } from "@/lib/pitfalls";
 
-export type ResolveOrigin = "import" | "new";
+export type { SimilarMatch };
 
-export type SimilarMatch = {
-  note: PracticeNote;
-  score: number;
-};
+export type ResolveOrigin = "import" | "new";
 
 export type ResolveSession = {
   origin: ResolveOrigin;

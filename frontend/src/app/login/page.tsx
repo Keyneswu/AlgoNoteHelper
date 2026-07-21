@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Card, Form, Input, Label, TextField } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
@@ -9,7 +8,6 @@ import { authClient } from "@/lib/auth-client";
 export default function LoginPage() {
   const t = useTranslations("login");
   const tCommon = useTranslations("common");
-  const router = useRouter();
   const { data: session, isPending, refetch } = authClient.useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,8 +15,12 @@ export default function LoginPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isPending && session) router.replace("/notes");
-  }, [isPending, router, session]);
+    // Only bounce away when we truly have a session — do not treat pending
+    // (e.g. after logout soft-land) as "Signing you in", which caused a flash loop.
+    if (!isPending && session) {
+      window.location.replace("/notes");
+    }
+  }, [isPending, session]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,11 +32,13 @@ export default function LoginPage() {
       return setError(result.error.message ?? t("errors.couldNotSignIn"));
     }
     await refetch();
-    setSaving(false);
-    router.replace("/notes");
+    // Hard navigate so protected pages mount with a settled session atom.
+    window.location.assign("/notes");
   }
 
-  if (isPending || session) {
+  // Show the form whenever there is no session. Pending without a session used
+  // to unmount the card into a "Signing you in…" stub and look like a flashing dialog.
+  if (session) {
     return (
       <main className="flex flex-1 items-center justify-center bg-canvas p-5">
         <p className="text-sm text-muted">{t("signingIn")}</p>

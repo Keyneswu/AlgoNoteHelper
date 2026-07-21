@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
@@ -10,7 +10,6 @@ import { authClient } from "@/lib/auth-client";
 export function AppNav() {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
 
   const links = [
@@ -21,9 +20,14 @@ export function AppNav() {
   ];
 
   async function signOut() {
-    await authClient.signOut();
-    router.push("/login");
-    router.refresh();
+    // Always hard-navigate after signOut. Relying only on fetchOptions.onSuccess
+    // left the notes page mounted with a stale useSession atom (cookie cleared,
+    // UI still showed Logout / no redirect).
+    try {
+      await authClient.signOut();
+    } finally {
+      window.location.assign("/login");
+    }
   }
 
   return (
