@@ -33,6 +33,15 @@ export const auth = betterAuth({
     enabled: true,
     disableSignUp: true,
   },
+  // Behind Cloudflare / nginx the container sees the proxy IP unless we read
+  // forwarded headers. Without this, rate limits collapse into one shared bucket
+  // and auth/get-session/BFF calls flake as Unauthorized or bounce login↔notes.
+  // Docs: https://better-auth.com/docs/reference/options#advanced
+  advanced: {
+    ipAddress: {
+      ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for", "x-real-ip"],
+    },
+  },
   plugins: [
     admin(),
     nextCookies(),

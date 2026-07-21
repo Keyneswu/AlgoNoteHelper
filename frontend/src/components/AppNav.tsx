@@ -20,13 +20,12 @@ export function AppNav() {
   ];
 
   async function signOut() {
-    // Always hard-navigate after signOut. Relying only on fetchOptions.onSuccess
-    // left the notes page mounted with a stale useSession atom (cookie cleared,
-    // UI still showed Logout / no redirect).
+    // Hard-navigate with loggedOut=1 so the login page does not bounce back to
+    // /notes on a stale useSession atom (felt like "logout instantly logs in").
     try {
       await authClient.signOut();
     } finally {
-      window.location.assign("/login");
+      window.location.assign("/login?loggedOut=1");
     }
   }
 

@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Card, Form, Input, Label, TextField } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
 
-export default function LoginPage() {
+function LoginForm() {
   const t = useTranslations("login");
   const tCommon = useTranslations("common");
+  const searchParams = useSearchParams();
+  const loggedOut = searchParams.get("loggedOut") === "1";
   const { data: session, isPending, refetch } = authClient.useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,12 +18,13 @@ export default function LoginPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Only bounce away when we truly have a session — do not treat pending
-    // (e.g. after logout soft-land) as "Signing you in", which caused a flash loop.
+    // After an explicit logout, stay on the form even if a stale client atom
+    // briefly still looks signed-in. Otherwise logout appears to "auto login".
+    if (loggedOut) return;
     if (!isPending && session) {
       window.location.replace("/notes");
     }
-  }, [isPending, session]);
+  }, [isPending, loggedOut, session]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,13 +36,12 @@ export default function LoginPage() {
       return setError(result.error.message ?? t("errors.couldNotSignIn"));
     }
     await refetch();
-    // Hard navigate so protected pages mount with a settled session atom.
+    // Hard navigate so protected pages mount with a settled session cookie.
     window.location.assign("/notes");
   }
 
-  // Show the form whenever there is no session. Pending without a session used
-  // to unmount the card into a "Signing you in…" stub and look like a flashing dialog.
-  if (session) {
+  // After logout, always show the form (ignore stale session atom).
+  if (session && !loggedOut) {
     return (
       <main className="flex flex-1 items-center justify-center bg-canvas p-5">
         <p className="text-sm text-muted">{t("signingIn")}</p>
@@ -73,5 +76,19 @@ export default function LoginPage() {
         </Card.Content>
       </Card>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex flex-1 items-center justify-center bg-canvas p-5">
+          <p className="text-sm text-muted">…</p>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

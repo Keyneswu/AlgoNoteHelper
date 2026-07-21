@@ -32,7 +32,12 @@ export async function bffFetch<T>(path: string, init: RequestInit = {}): Promise
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(url, { ...init, headers });
+  const response = await fetch(url, {
+    ...init,
+    headers,
+    credentials: "same-origin",
+    cache: init.cache ?? "no-store",
+  });
 
   if (!response.ok) {
     throw new BffError(response.status, await readBffErrorMessage(response));
