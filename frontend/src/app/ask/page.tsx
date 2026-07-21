@@ -91,6 +91,13 @@ export default function AskPage() {
   const activeSessionIdRef = useRef(activeSessionId);
   const bootstrappedRef = useRef(false);
 
+  /** Keep React state, ref, and sessionStorage in lockstep (ref must not lag a render). */
+  const setActiveSession = useCallback((id: number | null) => {
+    activeSessionIdRef.current = id;
+    setActiveSessionIdState(id);
+    setActiveSessionId(id);
+  }, []);
+
   useEffect(() => {
     // Hydrate rail preference from localStorage after mount (SSR-safe).
     // eslint-disable-next-line react-hooks/set-state-in-effect -- external store hydrate
@@ -111,20 +118,15 @@ export default function AskPage() {
     contextNotesRef.current = contextNotes;
   }, [contextNotes]);
 
-  useEffect(() => {
-    activeSessionIdRef.current = activeSessionId;
-  }, [activeSessionId]);
-
-  useEffect(() => {
-    setActiveSessionId(activeSessionId);
-  }, [activeSessionId]);
-
-  const applySessionDetail = useCallback((detail: AskSessionDetail) => {
-    setActiveSessionIdState(detail.id);
-    setMessages(mapMessages(detail));
-    setContextNotes(detail.context_notes ?? []);
-    setSessionKey((k) => k + 1);
-  }, []);
+  const applySessionDetail = useCallback(
+    (detail: AskSessionDetail) => {
+      setActiveSession(detail.id);
+      setMessages(mapMessages(detail));
+      setContextNotes(detail.context_notes ?? []);
+      setSessionKey((k) => k + 1);
+    },
+    [setActiveSession],
+  );
 
   const bootstrap = useCallback(async () => {
     setLoading(true);
@@ -186,14 +188,14 @@ export default function AskPage() {
         items = upsertSessionInList(items, toListItem(created));
       }
       setSessions(items);
-      setActiveSessionIdState(created.id);
+      setActiveSession(created.id);
       setMessages([]);
       setContextNotes([]);
       setSessionKey((k) => k + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("sessions.errorSave"));
     }
-  }, [t]);
+  }, [setActiveSession, t]);
 
   const handleDelete = useCallback(
     async (id: number) => {
@@ -234,11 +236,15 @@ export default function AskPage() {
       const id = activeSessionIdRef.current;
       if (id == null) return;
 
+      // Backend rejects empty message content (min_length=1); drop blanks before PATCH.
+      const messages = next.filter((m) => m.content.trim().length > 0);
+      if (!messages.length) return;
+
       const noteIds = contextNotesRef.current.map((n) => n.id);
       void (async () => {
         try {
           const updated = await updateAskSession(id, {
-            messages: next,
+            messages,
             context_note_ids: noteIds,
           });
           setSessions((prev) => upsertSessionInList(prev, toListItem(updated)));
