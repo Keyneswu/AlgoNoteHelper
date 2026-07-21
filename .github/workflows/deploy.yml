@@ -1,29 +1,95 @@
 name: Deploy
 
+# Deploys by pulling GHCR images. Does NOT run Alembic / Better Auth migrate.
+# Schema releases: backup → deploy images → migrate manually → verify (see README).
+
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Git SHA (image tag) to deploy; leave empty to use current origin/main HEAD after sync"
+        required: false
+        type: string
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Auto-deploy only when CI on main succeeded (includes image push). Manual dispatch always allowed.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     steps:
-      - name: Deploy over SSH
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT="${{ inputs.image_tag }}"
+            if [ -n "${INPUT}" ]; then
+              echo "image_tag=${INPUT}" >> "$GITHUB_OUTPUT"
+            else
+              echo "image_tag=" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "image_tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy over SSH (pull images)
         uses: appleboy/ssh-action@v1.2.2
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
+          envs: IMAGE_TAG,GHCR_USERNAME,GHCR_TOKEN
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
+
             git fetch origin main
             git reset --hard origin/main
-            docker compose up --build -d
+
+            if [ -z "${IMAGE_TAG}" ]; then
+              IMAGE_TAG="$(git rev-parse HEAD)"
+            fi
+            echo "Deploying IMAGE_TAG=${IMAGE_TAG}"
+
+            if [ -z "${GHCR_USERNAME:-}" ] || [ -z "${GHCR_TOKEN:-}" ]; then
+              echo "GHCR_USERNAME and GHCR_TOKEN secrets are required for docker pull."
+              exit 1
+            fi
+
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
+
+            if [ -f .env ]; then
+              if grep -q '^IMAGE_TAG=' .env; then
+                sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
+              else
+                echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
+              fi
+            else
+              echo "IMAGE_TAG=${IMAGE_TAG}" > .env
+              echo "Warning: created minimal .env with IMAGE_TAG only; ensure production secrets exist."
+            fi
+
+            export IMAGE_TAG
+            # Pull + recreate app services only. Never use --build or down -v here.
+            docker compose pull api frontend
+            docker compose up -d
             docker compose ps
