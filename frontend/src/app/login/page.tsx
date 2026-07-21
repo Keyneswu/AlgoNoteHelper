@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Card, Form, Input, Label, TextField } from "@heroui/react";
+import { PendingLabel } from "@/components/icons";
 import { authClient } from "@/lib/auth-client";
 
 function LoginForm() {
@@ -70,7 +71,9 @@ function LoginForm() {
             </TextField>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <Button type="submit" isPending={saving}>
-              {t("submit")}
+              {({ isPending }) => (
+                <PendingLabel pending={isPending}>{t("submit")}</PendingLabel>
+              )}
             </Button>
           </Form>
         </Card.Content>

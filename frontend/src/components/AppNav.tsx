@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button } from "@heroui/react";
+import { Button, Tooltip } from "@heroui/react";
+import { LogOut } from "lucide-react";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { authClient } from "@/lib/auth-client";
 
@@ -53,9 +54,20 @@ export function AppNav() {
         <LocaleSwitcher />
         {!isPending &&
           (session ? (
-            <Button size="sm" variant="tertiary" onPress={signOut}>
-              {t("logout")}
-            </Button>
+            <Tooltip delay={0}>
+              <Button
+                size="sm"
+                variant="tertiary"
+                isIconOnly
+                aria-label={t("logout")}
+                onPress={signOut}
+              >
+                <LogOut className="size-4" aria-hidden />
+              </Button>
+              <Tooltip.Content>
+                <p>{t("logout")}</p>
+              </Tooltip.Content>
+            </Tooltip>
           ) : (
             <Link
               href="/login"

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
+import { X } from "lucide-react";
 import { DifficultyBadge } from "@/components/DifficultyBadge";
 import { getDifficultyMeta } from "@/lib/difficulty";
 import type { PracticeNote } from "@/lib/types";
@@ -50,11 +51,12 @@ export function AskContextBar({
               <Button
                 size="sm"
                 variant="tertiary"
+                isIconOnly
                 aria-label={t("contextBar.remove")}
-                className="h-5 w-5 min-w-5 px-0 text-muted hover:text-danger"
+                className="h-5 w-5 min-w-5 text-muted hover:text-danger"
                 onPress={() => onRemove(note.id)}
               >
-                <span aria-hidden>×</span>
+                <X className="size-3" aria-hidden />
               </Button>
             </div>
           ))
@@ -117,13 +119,12 @@ export function AskContextBar({
                 <Button
                   size="sm"
                   variant="tertiary"
+                  isIconOnly
                   aria-label={t("contextBar.remove")}
-                  className="h-7 w-7 shrink-0 min-w-7 px-0 text-muted opacity-70 group-hover:opacity-100 hover:text-danger"
+                  className="h-7 w-7 shrink-0 min-w-7 text-muted opacity-70 group-hover:opacity-100 hover:text-danger"
                   onPress={() => onRemove(note.id)}
                 >
-                  <span aria-hidden className="text-base leading-none">
-                    ×
-                  </span>
+                  <X className="size-3.5" aria-hidden />
                 </Button>
               </div>
             );

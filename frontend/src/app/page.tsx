@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
+import { AskLoader } from "@/components/icons";
 import { authClient } from "@/lib/auth-client";
 
 export default function Home() {
@@ -32,7 +33,10 @@ export default function Home() {
       <div className="space-y-4 text-center">
         <p className="text-sm font-medium text-accent">{tCommon("brand")}</p>
         <p className="text-muted">{t("preparingWorkspace")}</p>
-        <Button isDisabled>{tCommon("loading")}</Button>
+        <Button isDisabled>
+          <AskLoader />
+          {tCommon("loading")}
+        </Button>
       </div>
     </main>
   );

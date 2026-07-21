@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Card, Form, Input, Label, TextField } from "@heroui/react";
+import { PendingLabel } from "@/components/icons";
 
 export default function SetupPage() {
   const t = useTranslations("setup");
@@ -62,7 +63,9 @@ export default function SetupPage() {
             </TextField>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <Button type="submit" isPending={saving}>
-              {t("submit")}
+              {({ isPending }) => (
+                <PendingLabel pending={isPending}>{t("submit")}</PendingLabel>
+              )}
             </Button>
           </Form>
         </Card.Content>

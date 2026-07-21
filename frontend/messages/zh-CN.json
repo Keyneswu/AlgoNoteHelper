@@ -116,6 +116,10 @@
         "search": "搜索",
         "pageSummary": "第 {from}–{to} 条，共 {total} 条"
       },
+      "toast": {
+        "found": "找到 {count} 道题目",
+        "none": "没有找到匹配的题目"
+      },
       "empty": "没有符合条件的笔记。创建一条，开始你的归档吧。",
       "errors": {
         "couldNotLoad": "无法加载笔记"
@@ -245,6 +249,8 @@
     "retrievedNotesCount": "({count})",
     "retrievedNotesHint": "本次回答引用的来源 — 展开可查看",
     "noRelevantNotes": "未找到相关笔记。",
+    "contextChip": "上下文笔记",
+    "contextChipWithCount": "上下文笔记（{count}）",
     "contextBar": {
       "heading": "上下文笔记",
       "count": "({count})",
@@ -257,6 +263,8 @@
       "railSessions": "会话",
       "railNotes": "笔记",
       "newChat": "新对话",
+      "collapseRail": "收起侧栏",
+      "expandRail": "展开侧栏",
       "empty": "还没有对话。",
       "loading": "加载会话中…",
       "deleteHeading": "删除对话？",

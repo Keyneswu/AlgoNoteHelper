@@ -10,6 +10,7 @@ import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { keymap } from "@codemirror/view";
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { PreferredCodeLanguage } from "@/lib/types";
 
 /** Approx line height used for min/max rem conversion (matches text-sm editor). */
@@ -102,10 +103,15 @@ export function CodeField({
           <Button
             size="sm"
             variant="tertiary"
-            className="text-xs"
+            isIconOnly
+            aria-label={expanded ? t("collapse") : t("expand")}
             onPress={() => setExpanded((prev) => !prev)}
           >
-            {expanded ? t("collapse") : t("expand")}
+            {expanded ? (
+              <ChevronUp className="size-4" aria-hidden />
+            ) : (
+              <ChevronDown className="size-4" aria-hidden />
+            )}
           </Button>
         </div>
       ) : null}

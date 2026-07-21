@@ -9,6 +9,7 @@ import { CodeField } from "@/components/CodeField";
 import { FieldLabel } from "@/components/FieldLabel";
 import { DifficultyBadge } from "@/components/DifficultyBadge";
 import { DifficultyPicker } from "@/components/DifficultyPicker";
+import { PendingLabel } from "@/components/icons";
 import { NoteTags } from "@/components/NoteTags";
 import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
@@ -164,7 +165,9 @@ export default function ImportPage() {
               <TextArea rows={12} placeholder={t("markdownPlaceholder")} />
             </TextField>
             <Button onPress={extract} isDisabled={!markdown.trim()} isPending={loading}>
-              {t("extractNotes")}
+              {({ isPending }) => (
+                <PendingLabel pending={isPending}>{t("extractNotes")}</PendingLabel>
+              )}
             </Button>
           </Card.Content>
         </Card>
@@ -177,9 +180,13 @@ export default function ImportPage() {
                 <p className="mt-1 text-sm text-muted">{t("reviewHint")}</p>
               </div>
               <Button onPress={commit} isPending={loading}>
-                {t("importCount", {
-                  count: candidates.filter((c) => c.mergedNoteId == null).length,
-                })}
+                {({ isPending }) => (
+                  <PendingLabel pending={isPending}>
+                    {t("importCount", {
+                      count: candidates.filter((c) => c.mergedNoteId == null).length,
+                    })}
+                  </PendingLabel>
+                )}
               </Button>
             </div>
             <Accordion

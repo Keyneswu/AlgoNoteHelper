@@ -1,18 +1,4 @@
-# ask-chat Specification
-
-## Purpose
-Multi-turn Ask conversation UI: streaming thread, Notebook chip grounding pool, and history-only collapsible left rail backed by durable server sessions (ask-sessions).
-## Requirements
-### Requirement: Session-scoped multi-turn Ask thread
-The Ask UI SHALL present a conversation thread (user and assistant messages) for the active Ask session with streaming assistant replies. Multi-turn history for the active session MUST be available for follow-ups. Durable persistence, listing, switching, and deletion of sessions are provided by the ask-sessions capability; the Ask UI MUST integrate with that session list rather than treating the thread as ephemeral-only or hiding multi-session navigation.
-
-#### Scenario: Follow-up in the same session
-- **WHEN** a user sends a question and then sends a follow-up in the same Ask session without leaving and clearing state
-- **THEN** the assistant response is generated with prior user/assistant turns available as conversation history
-
-#### Scenario: Active session drives the thread
-- **WHEN** a durable Ask session is active
-- **THEN** the thread shown is that session's conversation (not an anonymous ephemeral-only thread)
+## MODIFIED Requirements
 
 ### Requirement: Context Bar as editable grounding pool
 The Ask UI SHALL expose an editable grounding pool of practice notes for the active session via a **Notebook chip** in the main conversation column (not in the left history rail). The chip MUST show the current note count and open a popover (or equivalent overlay) listing those notes. Newly retrieved notes MUST be merged into the pool by note id (duplicates MUST NOT appear twice). The user MUST be able to remove notes from the pool via the popover. The chip MUST be hidden when the pool is empty (count is 0). The UI MUST NOT offer manual addition of arbitrary catalog notes to the pool in this version. Answer grounding for each turn MUST use all notes present in the pool at request time (after that turn’s merge), not only the notes newly retrieved on that turn.
@@ -48,16 +34,7 @@ The Ask conversation UI SHALL be built with assistant-ui thread primitives (or e
 - **WHEN** the user views the Ask composer idle or while a run is in progress
 - **THEN** send and cancel are presented as Lucide icon controls with accessible names (not primary reliance on visible “Send”/“Stop” labels)
 
-### Requirement: Ephemeral client session state
-Grounding-pool note ids and thread messages MAY be cached in client memory and optional sessionStorage so in-app navigations do not always wipe the active view, but the system MUST treat server-backed Ask sessions (ask-sessions) as the source of truth for conversations. Client cache MUST NOT replace durable server session state when continuing a conversation across browsers or devices.
-
-#### Scenario: Server session is source of truth
-- **WHEN** a user completes a multi-turn Ask session and later opens Ask in another browser while authenticated as the same user
-- **THEN** the conversation is available via the durable server session list rather than requiring the original browser's client storage
-
-#### Scenario: Client cache is optional
-- **WHEN** the client keeps grounding-pool note ids or messages in memory or sessionStorage
-- **THEN** that cache is subordinate to the loaded server session and MUST NOT be treated as the sole persistence mechanism
+## ADDED Requirements
 
 ### Requirement: History-only collapsible left rail
 The Ask page left rail (desktop / `md+`) SHALL show only the durable Ask session history (as defined by ask-sessions). The rail MUST NOT include a Sessions|Notes mode toggle and MUST NOT host the Context Bar / grounding pool. The rail MUST support ChatGPT-style collapse: when collapsed, a narrow icon strip remains with at least expand and new-chat icon controls and MUST NOT show session title text; when expanded, the session list and icon new-chat control are visible. Collapse preference MUST persist across reloads for the same browser (e.g. `localStorage`). Icon-only rail controls MUST expose accessible names via i18n `aria-label` (or equivalent).
@@ -89,13 +66,12 @@ Ask session and thread chrome that represents a single clear action (new chat, d
 - **WHEN** Ask sessions are loading
 - **THEN** the UI shows a Lucide loading spinner (not only a loading sentence)
 
-### Requirement: Confirm before hard-deleting a session
-The Ask UI SHALL require explicit user confirmation (e.g. AlertDialog) before calling the session hard-delete API. The confirmation MUST warn that deletion is permanent. The UI MUST NOT delete a session on a single click without confirmation.
+## REMOVED Requirements
 
-#### Scenario: Delete requires confirmation
-- **WHEN** a user chooses delete on a session in the Sessions list
-- **THEN** a confirmation dialog appears and the session is not deleted until the user confirms
+### Requirement: Dual-mode Sessions and Notes left rail
+**Reason**: Left rail is history-only; grounding moves to the Notebook chip in the main column.
+**Migration**: Use the Notebook chip + popover for context notes; session list remains the sole rail content.
 
-#### Scenario: Cancel leaves session intact
-- **WHEN** a user dismisses or cancels the delete confirmation
-- **THEN** the session remains and still appears in the Sessions list
+### Requirement: Load session and auto-switch rail to Notes on send
+**Reason**: Notes mode and the Sessions|Notes toggle are removed; there is no Notes rail mode to switch into after send.
+**Migration**: Selecting a session still loads thread + context note ids; grounding is managed via the Notebook chip when the pool is non-empty.

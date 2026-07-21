@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Card } from "@heroui/react";
+import { ArrowLeft } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
+import { askIconProps, PendingLabel } from "@/components/icons";
 import { NoteEditorForm } from "@/components/NoteEditorForm";
 import { useNoteFieldEdit } from "@/hooks/useNoteFieldEdit";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
@@ -71,10 +73,12 @@ export default function NewNotePage() {
             type="button"
             size="sm"
             variant="tertiary"
-            className="px-3 text-accent hover:text-accent"
+            isIconOnly
+            aria-label={tCommon("actions.backToNotes")}
+            className="text-accent hover:text-accent"
             onPress={() => router.push("/notes")}
           >
-            {tCommon("actions.backToNotes")}
+            <ArrowLeft {...askIconProps()} />
           </Button>
         </div>
         <p className="text-sm font-semibold text-accent">{tCommon("practiceArchive")}</p>
@@ -97,7 +101,9 @@ export default function NewNotePage() {
               error={error}
               footerSlot={
                 <Button type="submit" isPending={saving}>
-                  {t("submit")}
+                  {({ isPending }) => (
+                    <PendingLabel pending={isPending}>{t("submit")}</PendingLabel>
+                  )}
                 </Button>
               }
             />

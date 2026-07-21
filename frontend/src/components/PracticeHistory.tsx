@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
+import { CalendarPlus, X } from "lucide-react";
 import { FieldLabel } from "@/components/FieldLabel";
 
 type PracticeHistoryProps = {
@@ -51,10 +52,10 @@ export function PracticeHistory({ dates, onChange }: PracticeHistoryProps) {
                 <button
                   type="button"
                   aria-label={t("removeAriaLabel", { date: formatDateChip(iso, locale) })}
-                  className="rounded-full px-0.5 text-muted hover:bg-inset hover:text-foreground"
+                  className="inline-flex rounded-full p-0.5 text-muted hover:bg-inset hover:text-foreground"
                   onClick={() => remove(iso)}
                 >
-                  ×
+                  <X className="size-3" aria-hidden />
                 </button>
               </span>
             ))}
@@ -64,6 +65,7 @@ export function PracticeHistory({ dates, onChange }: PracticeHistoryProps) {
         )}
         <div className="mt-3">
           <Button type="button" size="sm" variant="secondary" onPress={recordPractice}>
+            <CalendarPlus className="size-3.5" aria-hidden />
             {t("record")}
           </Button>
           <p className="mt-1.5 text-xs text-muted">{t("hint")}</p>

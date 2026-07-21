@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button, Input } from "@heroui/react";
+import { Plus, X } from "lucide-react";
 import { FieldLabel } from "@/components/FieldLabel";
 import { PRESET_TAGS, displayTag, normalizeTag } from "@/lib/tags";
 
@@ -100,7 +101,7 @@ export function TagPicker({
                 role="button"
                 tabIndex={0}
                 aria-label={t("tags.removeTagAriaLabel", { tag: displayTag(tag) })}
-                className="rounded-full px-0.5 text-accent hover:bg-accent/20"
+                className="inline-flex rounded-full p-0.5 text-accent hover:bg-accent/20"
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -114,7 +115,7 @@ export function TagPicker({
                   }
                 }}
               >
-                ×
+                <X className="size-3" aria-hidden />
               </span>
             </span>
           ))
@@ -167,10 +168,11 @@ export function TagPicker({
                     key={tag}
                     type="button"
                     onClick={() => remove(tag)}
-                    className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/40"
+                    className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/40"
                     title={t("tags.clickToRemove")}
                   >
-                    {displayTag(tag)} ×
+                    {displayTag(tag)}
+                    <X className="size-3" aria-hidden />
                   </button>
                 ))}
               </div>
@@ -202,6 +204,7 @@ export function TagPicker({
                   isDisabled={!normalizeTag(custom)}
                   onPress={addCustom}
                 >
+                  <Plus className="size-3.5" aria-hidden />
                   {t("actions.add")}
                 </Button>
               </div>

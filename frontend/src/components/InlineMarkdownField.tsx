@@ -6,8 +6,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { FieldLabel, type FieldKind } from "@/components/FieldLabel";
 import { NoteMarkdown } from "@/components/NoteMarkdown";
+import { askIconProps } from "@/components/icons";
 
 export type InlineMarkdownLabels = {
   edit: string;
@@ -99,9 +101,15 @@ function CollapsibleRenderedMarkdown({
         <div className="flex justify-end">
           <button
             type="button"
-            className="rounded-md px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            aria-label={expanded ? collapseLabel : expandLabel}
+            className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={() => setExpanded((prev) => !prev)}
           >
+            {expanded ? (
+              <ChevronUp className="size-3.5" aria-hidden />
+            ) : (
+              <ChevronDown className="size-3.5" aria-hidden />
+            )}
             {expanded ? collapseLabel : expandLabel}
           </button>
         </div>
@@ -143,14 +151,15 @@ export function InlineMarkdownField({
         {!isEditing && (
           <button
             type="button"
-            className="rounded-md bg-accent-emphasis px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-sm shadow-black/20 transition hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-35"
+            className="inline-flex size-9 items-center justify-center rounded-md bg-accent-emphasis text-accent-foreground shadow-sm shadow-black/20 transition hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-35"
             disabled={isEditDisabled}
+            aria-label={labels.edit}
             onClick={() => {
               setMode("source");
               onEdit();
             }}
           >
-            {labels.edit}
+            <Pencil {...askIconProps({ className: "size-4" })} />
           </button>
         )}
       </div>

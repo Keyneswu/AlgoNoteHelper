@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Streamdown } from "streamdown";
 import { createCodePlugin } from "@streamdown/code";
@@ -25,7 +26,12 @@ export function AskAnswer({ markdown, isStreaming = false }: AskAnswerProps) {
 
   if (!markdown) {
     if (isStreaming) {
-      return <p className="text-base leading-7 text-muted">{t("thinking")}</p>;
+      return (
+        <p className="flex items-center gap-2 text-base leading-7 text-muted">
+          <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          <span>{t("thinking")}</span>
+        </p>
+      );
     }
     return <p className="text-base leading-7 text-foreground">{t("noAnswer")}</p>;
   }

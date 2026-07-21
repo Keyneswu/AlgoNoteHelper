@@ -2,6 +2,8 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { AlertDialog, Button } from "@heroui/react";
+import { Loader2, PanelLeftClose, Plus, Trash2 } from "lucide-react";
+import { PendingLabel } from "@/components/icons";
 import type { AskSessionListItem } from "@/lib/ask-sessions";
 
 type AskSessionListProps = {
@@ -13,6 +15,8 @@ type AskSessionListProps = {
   onNewChat: () => void;
   onDelete: (id: number) => void | Promise<void>;
   deletingId?: number | null;
+  /** When set, shows a collapse control on the left of the header. */
+  onCollapse?: () => void;
 };
 
 function formatShortUpdatedAt(iso: string, locale: string): string {
@@ -37,34 +41,52 @@ export function AskSessionList({
   onNewChat,
   onDelete,
   deletingId = null,
+  onCollapse,
 }: AskSessionListProps) {
   const t = useTranslations("ask.sessions");
   const locale = useLocale();
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-canvas">
-      <div className="shrink-0 space-y-2 px-4 pt-3 pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-sm font-semibold tracking-wide text-foreground">
-            {t("railSessions")}
-          </p>
+      <div className="shrink-0 px-4 pt-3 pb-3">
+        <div
+          className={`flex items-center gap-2 ${onCollapse ? "justify-between" : "justify-end"}`}
+        >
+          {onCollapse ? (
+            <Button
+              size="sm"
+              variant="tertiary"
+              isIconOnly
+              className="shrink-0"
+              aria-label={t("collapseRail")}
+              isDisabled={disabled || loading}
+              onPress={onCollapse}
+            >
+              <PanelLeftClose aria-hidden className="size-4" />
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant="secondary"
+            isIconOnly
             className="shrink-0"
+            aria-label={t("newChat")}
             isDisabled={disabled || loading}
             onPress={onNewChat}
           >
-            {t("newChat")}
+            <Plus aria-hidden className="size-4" />
           </Button>
         </div>
       </div>
 
       <div className="mx-4 h-px shrink-0 bg-border/70" aria-hidden />
 
-      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
+      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-2" aria-busy={loading}>
         {loading ? (
-          <p className="px-2 py-6 text-sm text-muted">{t("loading")}</p>
+          <div className="flex items-center justify-center py-6" role="status">
+            <Loader2 aria-hidden className="size-5 animate-spin text-muted" />
+            <span className="sr-only">{t("loading")}</span>
+          </div>
         ) : sessions.length === 0 ? (
           <p className="px-2 py-6 text-sm leading-relaxed text-muted">{t("empty")}</p>
         ) : (
@@ -99,13 +121,12 @@ export function AskSessionList({
                   <Button
                     size="sm"
                     variant="tertiary"
+                    isIconOnly
                     aria-label={t("deleteConfirmAction")}
                     isDisabled={disabled || deletingId === session.id}
                     className="h-7 w-7 shrink-0 min-w-7 px-0 text-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-danger data-[pressed]:opacity-100"
                   >
-                    <span aria-hidden className="text-base leading-none">
-                      ×
-                    </span>
+                    <Trash2 aria-hidden className="size-4" />
                   </Button>
                   <AlertDialog.Backdrop>
                     <AlertDialog.Container>
@@ -131,7 +152,11 @@ export function AskSessionList({
                             isPending={deletingId === session.id}
                             onPress={() => void onDelete(session.id)}
                           >
-                            {t("deleteConfirmAction")}
+                            {({ isPending }) => (
+                              <PendingLabel pending={isPending}>
+                                {t("deleteConfirmAction")}
+                              </PendingLabel>
+                            )}
                           </Button>
                         </AlertDialog.Footer>
                       </AlertDialog.Dialog>

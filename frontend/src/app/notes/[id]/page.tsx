@@ -4,7 +4,9 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AlertDialog, Button, Card } from "@heroui/react";
+import { ArrowLeft } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
+import { AskLoader, askIconProps, PendingLabel } from "@/components/icons";
 import { DifficultyBadge } from "@/components/DifficultyBadge";
 import { NoteEditorForm } from "@/components/NoteEditorForm";
 import { NoteTags } from "@/components/NoteTags";
@@ -102,10 +104,12 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
             type="button"
             size="sm"
             variant="tertiary"
-            className="px-3 text-accent hover:text-accent"
+            isIconOnly
+            aria-label={tCommon("actions.backToNotes")}
+            className="text-accent hover:text-accent"
             onPress={() => router.push("/notes")}
           >
-            {tCommon("actions.backToNotes")}
+            <ArrowLeft {...askIconProps()} />
           </Button>
         </div>
         <p className="text-sm font-semibold text-accent">{tCommon("practiceArchive")}</p>
@@ -122,7 +126,10 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
         </div>
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
         {!note ? (
-          <p className="text-muted">{t("loading")}</p>
+          <div className="flex items-center justify-center py-12" role="status">
+            <AskLoader className="size-5 text-muted" />
+            <span className="sr-only">{t("loading")}</span>
+          </div>
         ) : (
           <Card className="border border-border bg-surface">
             <Card.Content>
@@ -154,7 +161,9 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                         isDisabled={deleting}
                         onPress={() => void saveNote(true)}
                       >
-                        {t("saveAndReturn")}
+                        {({ isPending }) => (
+                          <PendingLabel pending={isPending}>{t("saveAndReturn")}</PendingLabel>
+                        )}
                       </Button>
                     </div>
                     <AlertDialog>
@@ -185,7 +194,9 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                                 isPending={deleting}
                                 onPress={() => void confirmDelete()}
                               >
-                                {t("delete")}
+                                {({ isPending }) => (
+                                  <PendingLabel pending={isPending}>{t("delete")}</PendingLabel>
+                                )}
                               </Button>
                             </AlertDialog.Footer>
                           </AlertDialog.Dialog>
@@ -217,7 +228,9 @@ export default function NotePage({ params }: { params: Promise<{ id: string }> }
                       isDisabled={deleting}
                       onPress={() => void saveNote(false)}
                     >
-                      {t("dirty.save")}
+                      {({ isPending }) => (
+                        <PendingLabel pending={isPending}>{t("dirty.save")}</PendingLabel>
+                      )}
                     </Button>
                   </div>
                 </div>

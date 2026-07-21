@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import { FieldLabel } from "@/components/FieldLabel";
 import { removePitfall, replacePitfall } from "@/lib/pitfalls";
 
@@ -65,10 +66,11 @@ export function PitfallBlocks({ value, onChange, labels }: PitfallBlocksProps) {
                 <div className="flex justify-end px-3 py-2">
                   <button
                     type="button"
-                    className="rounded-md px-2.5 py-1 text-xs font-medium text-muted hover:bg-red-400/10 hover:text-red-300"
+                    aria-label={labels.remove}
+                    className="inline-flex rounded-md p-1.5 text-muted hover:bg-red-400/10 hover:text-red-300"
                     onClick={() => onChange(removePitfall(value, index))}
                   >
-                    {labels.remove}
+                    <X className="size-3.5" aria-hidden />
                   </button>
                 </div>
               </article>
@@ -79,21 +81,28 @@ export function PitfallBlocks({ value, onChange, labels }: PitfallBlocksProps) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-300/20"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-300/20"
           onClick={() => {
             const next = [...value, ""];
             onChange(next);
             if (next.length > VISIBLE_WHEN_COLLAPSED) setExpanded(true);
           }}
         >
+          <Plus className="size-3.5" aria-hidden />
           {labels.add}
         </button>
         {needsCollapse ? (
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-muted hover:bg-surface hover:text-foreground"
+            aria-label={expanded ? labels.collapse : labels.expand}
+            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-muted hover:bg-surface hover:text-foreground"
             onClick={() => setExpanded((prev) => !prev)}
           >
+            {expanded ? (
+              <ChevronUp className="size-3.5" aria-hidden />
+            ) : (
+              <ChevronDown className="size-3.5" aria-hidden />
+            )}
             {expanded ? labels.collapse : labels.expand}
           </button>
         ) : null}

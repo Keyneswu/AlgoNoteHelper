@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Card, Input, TextArea, TextField } from "@heroui/react";
+import { Button, Card, Input, TextArea, TextField, Tooltip } from "@heroui/react";
+import { ArrowLeft } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 import { CodeField } from "@/components/CodeField";
 import { FieldLabel } from "@/components/FieldLabel";
 import { DifficultyPicker } from "@/components/DifficultyPicker";
+import { PendingLabel } from "@/components/icons";
 import { TagPicker } from "@/components/TagPicker";
 import { usePreferredCodeLanguage } from "@/hooks/usePreferredCodeLanguage";
 import { useRequireSession } from "@/hooks/useRequireSession";
@@ -222,7 +224,19 @@ export function ResolveConflictPage() {
         <AppNav />
         <main className="mx-auto max-w-6xl space-y-4 p-5">
           <p className="text-muted">{t("empty")}</p>
-          <Button onPress={() => router.replace("/notes")}>{tCommon("actions.backToNotes")}</Button>
+          <Tooltip delay={0}>
+            <Button
+              isIconOnly
+              variant="secondary"
+              aria-label={tCommon("actions.backToNotes")}
+              onPress={() => router.replace("/notes")}
+            >
+              <ArrowLeft className="size-4" aria-hidden />
+            </Button>
+            <Tooltip.Content>
+              <p>{tCommon("actions.backToNotes")}</p>
+            </Tooltip.Content>
+          </Tooltip>
         </main>
       </div>
     );
@@ -378,7 +392,9 @@ export function ResolveConflictPage() {
                 isPending={busy}
                 className="w-full sm:w-auto"
               >
-                {t("keepAsNew")}
+                {({ isPending }) => (
+                  <PendingLabel pending={isPending}>{t("keepAsNew")}</PendingLabel>
+                )}
               </Button>
             </Card.Content>
           </Card>
@@ -485,7 +501,9 @@ export function ResolveConflictPage() {
 
               {error && <p className="text-sm text-red-400">{error}</p>}
               <Button onPress={saveMerge} isPending={busy} className="w-full sm:w-auto">
-                {t("saveMerge")}
+                {({ isPending }) => (
+                  <PendingLabel pending={isPending}>{t("saveMerge")}</PendingLabel>
+                )}
               </Button>
             </Card.Content>
           </Card>
@@ -515,7 +533,7 @@ function FieldActions({
       </Button>
       {onAiMerge ? (
         <Button size="sm" variant="tertiary" onPress={onAiMerge} isPending={aiPending}>
-          {aiLabel}
+          {({ isPending }) => <PendingLabel pending={isPending}>{aiLabel}</PendingLabel>}
         </Button>
       ) : null}
     </div>

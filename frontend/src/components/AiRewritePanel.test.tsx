@@ -93,7 +93,7 @@ describe("AiRewritePanel", () => {
 
     const formatButton = screen.getByRole("button", { name: /Format Markdown/i });
     expect(formatButton).toHaveAttribute("aria-busy", "true");
-    expect(formatButton.querySelector(".spinner")).not.toBeNull();
+    expect(formatButton.querySelector("svg.lucide-loader-circle")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Organize" })).toBeDisabled();
 
     await act(async () => resolveResponse(okResponse("## Problem")));

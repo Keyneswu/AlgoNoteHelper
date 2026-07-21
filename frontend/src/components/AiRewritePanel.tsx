@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Spinner } from "@heroui/react";
+import { PendingLabel } from "@/components/icons";
 import {
   isRewriteCandidateStale,
   requestFieldRewrite,
@@ -50,23 +50,6 @@ type UndoState = {
   before: string;
   applied: string;
 };
-
-function PendingActionLabel({
-  label,
-  pending,
-}: {
-  label: string;
-  pending: boolean;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {pending ? (
-        <Spinner size="sm" color="current" className="size-3.5" />
-      ) : null}
-      {label}
-    </span>
-  );
-}
 
 export function AiRewritePanel({
   field,
@@ -143,10 +126,9 @@ export function AiRewritePanel({
             aria-busy={pendingOperation === action.id}
             onClick={() => void runExternal(action)}
           >
-            <PendingActionLabel
-              label={action.label}
-              pending={pendingOperation === action.id}
-            />
+            <PendingLabel pending={pendingOperation === action.id}>
+              {action.label}
+            </PendingLabel>
           </button>
         ))}
         {quickActions.map((action) => (
@@ -158,10 +140,9 @@ export function AiRewritePanel({
             aria-busy={pendingOperation === action.operation}
             onClick={() => void run(action.operation)}
           >
-            <PendingActionLabel
-              label={action.label}
-              pending={pendingOperation === action.operation}
-            />
+            <PendingLabel pending={pendingOperation === action.operation}>
+              {action.label}
+            </PendingLabel>
           </button>
         ))}
         {canUndo && (

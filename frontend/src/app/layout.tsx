@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { AppToastProvider } from "@/components/AppToastProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,7 +35,10 @@ export default async function RootLayout({
       data-theme="dark"
     >
       <body className="flex min-h-full flex-col bg-canvas text-foreground font-sans">
-        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider messages={messages}>
+          <AppToastProvider />
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

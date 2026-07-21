@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button, Card, Form, Input, Label, ListBox, Select, TextField } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
+import { PendingLabel } from "@/components/icons";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { authClient } from "@/lib/auth-client";
 import { getLlmConfig, updateLlmConfig, verifyLlmConfig } from "@/lib/llm-config";
@@ -38,6 +39,8 @@ export default function SettingsPage() {
   const [passwordMessage, setPasswordMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [newName, setNewName] = useState("");
@@ -129,26 +132,43 @@ export default function SettingsPage() {
   }
 
   async function loadUsers() {
-    const result = await authClient.admin.listUsers({ query: { limit: 100 } });
-    if (result.error) return setMessage(result.error.message ?? t("errors.couldNotListUsers"));
-    setUsers((result.data?.users ?? []) as AdminUser[]);
+    setLoadingUsers(true);
+    setMessage("");
+    try {
+      const result = await authClient.admin.listUsers({ query: { limit: 100 } });
+      if (result.error) {
+        setMessage(result.error.message ?? t("errors.couldNotListUsers"));
+        return;
+      }
+      setUsers((result.data?.users ?? []) as AdminUser[]);
+    } finally {
+      setLoadingUsers(false);
+    }
   }
 
   async function createUser(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    const result = await authClient.admin.createUser({
-      name: newName,
-      email: newEmail,
-      password: newPassword,
-      role: "user",
-    });
-    if (result.error) return setMessage(result.error.message ?? t("errors.couldNotCreateUser"));
-    setNewName("");
-    setNewEmail("");
-    setNewPassword("");
-    setMessage(t("messages.userCreated"));
-    void loadUsers();
+    setCreatingUser(true);
+    try {
+      const result = await authClient.admin.createUser({
+        name: newName,
+        email: newEmail,
+        password: newPassword,
+        role: "user",
+      });
+      if (result.error) {
+        setMessage(result.error.message ?? t("errors.couldNotCreateUser"));
+        return;
+      }
+      setNewName("");
+      setNewEmail("");
+      setNewPassword("");
+      setMessage(t("messages.userCreated"));
+      void loadUsers();
+    } finally {
+      setCreatingUser(false);
+    }
   }
 
   async function resetUserPassword(userId: string) {
@@ -222,7 +242,9 @@ export default function SettingsPage() {
               <p className="text-xs text-muted">{t("password.minLengthHint")}</p>
               {passwordMessage && <p className="text-sm text-foreground/90">{passwordMessage}</p>}
               <Button type="submit" isPending={changingPassword}>
-                {t("password.submit")}
+                {({ isPending }) => (
+                  <PendingLabel pending={isPending}>{t("password.submit")}</PendingLabel>
+                )}
               </Button>
             </Form>
           </Card.Content>
@@ -263,7 +285,9 @@ export default function SettingsPage() {
                 />
               </div>
               <Button size="sm" variant="secondary" onPress={() => verify("chat")} isPending={saving}>
-                {t("chat.verify")}
+                {({ isPending }) => (
+                  <PendingLabel pending={isPending}>{t("chat.verify")}</PendingLabel>
+                )}
               </Button>
             </section>
             <section className="space-y-3 border-t border-border pt-5">
@@ -297,7 +321,9 @@ export default function SettingsPage() {
                 />
               </div>
               <Button size="sm" variant="secondary" onPress={() => verify("embedding")} isPending={saving}>
-                {t("embeddings.verify")}
+                {({ isPending }) => (
+                  <PendingLabel pending={isPending}>{t("embeddings.verify")}</PendingLabel>
+                )}
               </Button>
             </section>
             <section className="space-y-3 border-t border-border pt-5">
@@ -331,7 +357,9 @@ export default function SettingsPage() {
             </section>
             {message && <p className="text-sm text-foreground/90">{message}</p>}
             <Button onPress={save} isPending={saving}>
-              {t("saveConfiguration")}
+              {({ isPending }) => (
+                <PendingLabel pending={isPending}>{t("saveConfiguration")}</PendingLabel>
+              )}
             </Button>
           </Card.Content>
         </Card>
@@ -339,8 +367,10 @@ export default function SettingsPage() {
           <Card className="border border-border bg-surface">
             <Card.Header className="flex items-center justify-between">
               <h2 className="font-semibold text-foreground">{t("admin.usersHeading")}</h2>
-              <Button size="sm" variant="secondary" onPress={loadUsers}>
-                {t("admin.loadUsers")}
+              <Button size="sm" variant="secondary" onPress={loadUsers} isPending={loadingUsers}>
+                {({ isPending }) => (
+                  <PendingLabel pending={isPending}>{t("admin.loadUsers")}</PendingLabel>
+                )}
               </Button>
             </Card.Header>
             <Card.Content className="space-y-5">
@@ -355,7 +385,11 @@ export default function SettingsPage() {
                   autoComplete="new-password"
                 />
                 <div className="self-end">
-                  <Button type="submit">{t("admin.createUser")}</Button>
+                  <Button type="submit" isPending={creatingUser}>
+                    {({ isPending }) => (
+                      <PendingLabel pending={isPending}>{t("admin.createUser")}</PendingLabel>
+                    )}
+                  </Button>
                 </div>
               </Form>
               {message && <p className="text-sm text-foreground/90">{message}</p>}
@@ -395,7 +429,9 @@ export default function SettingsPage() {
                         isDisabled={resetPassword.length < MIN_PASSWORD_LENGTH}
                         onPress={() => resetUserPassword(user.id)}
                       >
-                        {t("admin.resetPassword")}
+                        {({ isPending }) => (
+                          <PendingLabel pending={isPending}>{t("admin.resetPassword")}</PendingLabel>
+                        )}
                       </Button>
                     </div>
                   </div>

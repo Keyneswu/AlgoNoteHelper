@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
+import { PanelLeftOpen, Plus } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
-import { AskContextBar } from "@/components/AskContextBar";
-import { AskRailToggle, type AskRailMode } from "@/components/AskRailToggle";
 import { AskRuntimeProvider } from "@/components/AskRuntimeProvider";
 import { AskSessionList } from "@/components/AskSessionList";
 import { AskThread } from "@/components/AskThread";
@@ -27,6 +26,8 @@ import {
 } from "@/lib/ask-store";
 import { ALL_DIFFICULTY_LEVELS } from "@/lib/difficulty";
 import type { PracticeNote } from "@/lib/types";
+
+const RAIL_COLLAPSED_KEY = "ask.railCollapsed";
 
 /** Filters are intentionally not exposed in v1 UI — always search the full pool. */
 const DEFAULT_FILTERS = {
@@ -63,11 +64,20 @@ function upsertSessionInList(
   );
 }
 
+function readRailCollapsed(): boolean {
+  try {
+    return localStorage.getItem(RAIL_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function AskPage() {
   const t = useTranslations("ask");
   const { session, isPending } = useRequireSession();
 
-  const [railMode, setRailMode] = useState<AskRailMode>("sessions");
+  const [railCollapsed, setRailCollapsed] = useState(false);
+  const [railReady, setRailReady] = useState(false);
   const [sessions, setSessions] = useState<AskSessionListItem[]>([]);
   const [activeSessionId, setActiveSessionIdState] = useState<number | null>(null);
   const [contextNotes, setContextNotes] = useState<PracticeNote[]>([]);
@@ -80,6 +90,20 @@ export default function AskPage() {
   const contextNotesRef = useRef(contextNotes);
   const activeSessionIdRef = useRef(activeSessionId);
   const bootstrappedRef = useRef(false);
+
+  useEffect(() => {
+    setRailCollapsed(readRailCollapsed());
+    setRailReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!railReady) return;
+    try {
+      localStorage.setItem(RAIL_COLLAPSED_KEY, railCollapsed ? "1" : "0");
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [railCollapsed, railReady]);
 
   useEffect(() => {
     contextNotesRef.current = contextNotes;
@@ -124,7 +148,6 @@ export default function AskPage() {
       }
       const detail = await getAskSession(preferId);
       applySessionDetail(detail);
-      setRailMode("sessions");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("sessions.errorLoad"));
     } finally {
@@ -140,15 +163,11 @@ export default function AskPage() {
 
   const selectSession = useCallback(
     async (id: number) => {
-      if (id === activeSessionIdRef.current) {
-        setRailMode("sessions");
-        return;
-      }
+      if (id === activeSessionIdRef.current) return;
       setError("");
       try {
         const detail = await getAskSession(id);
         applySessionDetail(detail);
-        setRailMode("sessions");
       } catch (err) {
         setError(err instanceof Error ? err.message : t("sessions.errorLoad"));
       }
@@ -169,7 +188,6 @@ export default function AskPage() {
       setMessages([]);
       setContextNotes([]);
       setSessionKey((k) => k + 1);
-      setRailMode("sessions");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("sessions.errorSave"));
     }
@@ -198,7 +216,6 @@ export default function AskPage() {
           }
           const detail = await getAskSession(nextId);
           applySessionDetail(detail);
-          setRailMode("sessions");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : t("sessions.errorDelete"));
@@ -208,10 +225,6 @@ export default function AskPage() {
     },
     [applySessionDetail, t],
   );
-
-  const onRunStart = useCallback(() => {
-    setRailMode("notes");
-  }, []);
 
   const onTranscript = useCallback(
     (next: AskChatMessage[]) => {
@@ -280,19 +293,40 @@ export default function AskPage() {
         initialMessages={messages}
         onNotesAdded={onNotesAdded}
         onTranscript={onTranscript}
-        onRunStart={onRunStart}
       >
         <div className="flex min-h-0 flex-1">
-          <aside className="ask-rail hidden w-[240px] shrink-0 md:flex md:flex-col lg:w-[260px]">
-            <div className="shrink-0 border-b border-border/60 px-3 py-2.5">
-              <AskRailToggle
-                value={railMode}
-                onChange={setRailMode}
-                isDisabled={railBusy}
-              />
-            </div>
-            <div className="min-h-0 flex-1">
-              {railMode === "sessions" ? (
+          <aside
+            className={`ask-rail hidden shrink-0 md:flex md:flex-col ${
+              railCollapsed
+                ? "ask-rail--collapsed w-14"
+                : "w-[240px] lg:w-[260px]"
+            }`}
+          >
+            {railCollapsed ? (
+              <div className="flex flex-col items-center gap-2 px-1.5 pt-3">
+                <Button
+                  size="sm"
+                  variant="tertiary"
+                  isIconOnly
+                  aria-label={t("sessions.expandRail")}
+                  isDisabled={railBusy}
+                  onPress={() => setRailCollapsed(false)}
+                >
+                  <PanelLeftOpen aria-hidden className="size-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  isIconOnly
+                  aria-label={t("sessions.newChat")}
+                  isDisabled={railBusy}
+                  onPress={() => void newChat()}
+                >
+                  <Plus aria-hidden className="size-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1">
                 <AskSessionList
                   sessions={sessions}
                   activeSessionId={activeSessionId}
@@ -302,15 +336,10 @@ export default function AskPage() {
                   onNewChat={() => void newChat()}
                   onDelete={handleDelete}
                   deletingId={deletingId}
+                  onCollapse={() => setRailCollapsed(true)}
                 />
-              ) : (
-                <AskContextBar
-                  notes={contextNotes}
-                  onRemove={removeNote}
-                  variant="rail"
-                />
-              )}
-            </div>
+              </div>
+            )}
             {error ? (
               <p className="shrink-0 border-t border-border/60 px-3 py-2 text-xs text-danger">
                 {error}
@@ -321,60 +350,41 @@ export default function AskPage() {
           <section className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="shrink-0 border-b border-border/60 md:hidden">
               <div className="flex items-center gap-2 px-3 py-2">
-                <AskRailToggle
-                  value={railMode}
-                  onChange={setRailMode}
-                  isDisabled={railBusy}
+                <select
+                  className="min-w-0 flex-1 rounded-lg border border-border/70 bg-surface px-2 py-1.5 text-sm text-foreground"
+                  value={activeSessionId ?? ""}
+                  disabled={railBusy || sessions.length === 0}
+                  aria-label={t("sessions.railSessions")}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    if (Number.isFinite(id) && id > 0) void selectSession(id);
+                  }}
+                >
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  isIconOnly
                   className="shrink-0"
-                />
-                {railMode === "sessions" ? (
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <select
-                      className="min-w-0 flex-1 rounded-lg border border-border/70 bg-surface px-2 py-1.5 text-sm text-foreground"
-                      value={activeSessionId ?? ""}
-                      disabled={railBusy || sessions.length === 0}
-                      aria-label={t("sessions.railSessions")}
-                      onChange={(e) => {
-                        const id = Number(e.target.value);
-                        if (Number.isFinite(id) && id > 0) void selectSession(id);
-                      }}
-                    >
-                      {sessions.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.title}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="shrink-0"
-                      isDisabled={railBusy}
-                      onPress={() => void newChat()}
-                    >
-                      {t("sessions.newChat")}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-                    {t("heading")}
-                  </p>
-                )}
+                  aria-label={t("sessions.newChat")}
+                  isDisabled={railBusy}
+                  onPress={() => void newChat()}
+                >
+                  <Plus aria-hidden className="size-4" />
+                </Button>
               </div>
-              {railMode === "notes" ? (
-                <AskContextBar
-                  notes={contextNotes}
-                  onRemove={removeNote}
-                  variant="mobile"
-                />
-              ) : null}
               {error ? (
-                <p className="px-3 pb-2 text-xs text-danger md:hidden">{error}</p>
+                <p className="px-3 pb-2 text-xs text-danger">{error}</p>
               ) : null}
             </div>
 
             <div className="min-h-0 flex-1">
-              <AskThread />
+              <AskThread contextNotes={contextNotes} onRemoveNote={removeNote} />
             </div>
           </section>
         </div>

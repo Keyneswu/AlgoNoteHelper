@@ -6,13 +6,22 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
-  useAui,
   useAuiState,
   useMessagePartText,
 } from "@assistant-ui/react";
+import { ArrowUp, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Button } from "@heroui/react";
 import { AskAnswer } from "@/components/AskAnswer";
+import { AskContextChip } from "@/components/AskContextChip";
+import type { PracticeNote } from "@/lib/types";
+
+type AskThreadProps = {
+  contextNotes?: PracticeNote[];
+  onRemoveNote?: (noteId: number) => void;
+};
+
+const composerActionClassName =
+  "inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-emphasis text-accent-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-40";
 
 const MarkdownText: FC = () => {
   const { text } = useMessagePartText();
@@ -47,8 +56,6 @@ function AssistantMessage() {
 
 function Composer() {
   const t = useTranslations("ask");
-  const aui = useAui();
-  const isRunning = useAuiState((s) => s.thread.isRunning);
 
   return (
     <ComposerPrimitive.Root className="mx-auto flex w-full max-w-5xl items-end gap-2 rounded-2xl border border-border/80 bg-raised/50 p-2 ring-1 ring-inset ring-transparent focus-within:border-accent/40 focus-within:ring-accent/15">
@@ -57,25 +64,27 @@ function Composer() {
         placeholder={t("composerPlaceholder")}
         className="max-h-40 min-h-[2.75rem] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted"
       />
-      {isRunning ? (
-        <Button
-          size="sm"
-          variant="secondary"
-          className="shrink-0"
-          onPress={() => aui.composer().cancel()}
+      <AuiIf condition={(s) => s.thread.isRunning}>
+        <ComposerPrimitive.Cancel
+          aria-label={t("cancel")}
+          className={`${composerActionClassName} bg-raised text-foreground ring-1 ring-border/80 hover:bg-raised/80`}
         >
-          {t("cancel")}
-        </Button>
-      ) : (
-        <Button size="sm" className="shrink-0" onPress={() => aui.composer().send()}>
-          {t("send")}
-        </Button>
-      )}
+          <Square className="size-3.5 fill-current" aria-hidden />
+        </ComposerPrimitive.Cancel>
+      </AuiIf>
+      <AuiIf condition={(s) => !s.thread.isRunning}>
+        <ComposerPrimitive.Send aria-label={t("send")} className={composerActionClassName}>
+          <ArrowUp className="size-4" aria-hidden />
+        </ComposerPrimitive.Send>
+      </AuiIf>
     </ComposerPrimitive.Root>
   );
 }
 
-export function AskThread() {
+export function AskThread({
+  contextNotes = [],
+  onRemoveNote,
+}: AskThreadProps) {
   const t = useTranslations("ask");
 
   return (
@@ -107,6 +116,11 @@ export function AskThread() {
       </ThreadPrimitive.Viewport>
 
       <div className="shrink-0 bg-canvas/95 px-4 pt-2 pb-4 backdrop-blur">
+        {onRemoveNote ? (
+          <div className="mx-auto mb-2 flex w-full max-w-5xl">
+            <AskContextChip notes={contextNotes} onRemove={onRemoveNote} />
+          </div>
+        ) : null}
         <Composer />
       </div>
     </ThreadPrimitive.Root>

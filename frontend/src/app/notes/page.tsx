@@ -17,6 +17,7 @@ import {
   RangeCalendar,
   Select,
   TextField,
+  toast,
 } from "@heroui/react";
 import { AppNav } from "@/components/AppNav";
 import { DifficultyMultiSelect } from "@/components/DifficultyMultiSelect";
@@ -201,6 +202,10 @@ function NotesPageContent() {
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const skipUrlWriteRef = useRef(true);
+  /** Skip the committed/page effect fetch once (explicit search or our own URL write bounce). */
+  const skipEffectFetchRef = useRef(false);
+  /** True while we are writing the browse URL ourselves (not browser back/forward). */
+  const applyingUrlRef = useRef(false);
 
   // Keep drafts/committed in sync when URL changes (back/forward).
   useEffect(() => {
@@ -214,7 +219,14 @@ function NotesPageContent() {
     setSort(initial.sort);
     setOrder(initial.order);
     setPage(initial.page);
-    skipUrlWriteRef.current = true;
+    if (applyingUrlRef.current) {
+      // Our replaceBrowseUrl — don't refetch (would abort the in-flight announced search).
+      applyingUrlRef.current = false;
+      skipEffectFetchRef.current = true;
+      skipUrlWriteRef.current = true;
+    } else {
+      skipUrlWriteRef.current = true;
+    }
   }, [initial]);
 
   function replaceBrowseUrl(
@@ -226,7 +238,13 @@ function NotesPageContent() {
   ) {
     const query = buildUrlQuery(nextCommitted, nextDifficulty, nextSort, nextOrder, nextPage);
     const qs = query.toString();
-    router.replace(qs ? `/notes?${qs}` : "/notes");
+    const nextUrl = qs ? `/notes?${qs}` : "/notes";
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (currentUrl === nextUrl) {
+      return;
+    }
+    applyingUrlRef.current = true;
+    router.replace(nextUrl);
   }
 
   async function loadNotes(
@@ -235,11 +253,13 @@ function NotesPageContent() {
     nextSort: SortMode,
     nextOrder: SortOrder,
     nextPage: number,
+    options?: { announce?: boolean },
   ) {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     const requestId = ++requestIdRef.current;
+    const shouldAnnounce = Boolean(options?.announce);
 
     setLoading(true);
     setError("");
@@ -251,16 +271,32 @@ function NotesPageContent() {
       const data = (await response.json()) as NotesListResponse | { error?: string };
       if (requestId !== requestIdRef.current) return;
       if (!response.ok) {
-        setError((data as { error?: string }).error ?? t("errors.couldNotLoad"));
+        const message = (data as { error?: string }).error ?? t("errors.couldNotLoad");
+        setError(message);
+        if (shouldAnnounce) {
+          toast.danger(message, { timeout: 4000 });
+        }
         return;
       }
       const list = data as NotesListResponse;
-      setNotes(list.items ?? []);
-      setTotal(list.total ?? 0);
+      const items = list.items ?? [];
+      const nextTotal = list.total ?? 0;
+      setNotes(items);
+      setTotal(nextTotal);
+      if (shouldAnnounce) {
+        if (nextTotal === 0) {
+          toast.danger(t("toast.none"), { timeout: 4000 });
+        } else {
+          toast.success(t("toast.found", { count: nextTotal }), { timeout: 4000 });
+        }
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       if (requestId !== requestIdRef.current) return;
       setError(t("errors.couldNotLoad"));
+      if (shouldAnnounce) {
+        toast.danger(t("errors.couldNotLoad"), { timeout: 4000 });
+      }
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
@@ -268,6 +304,10 @@ function NotesPageContent() {
 
   useEffect(() => {
     if (!session) return;
+    if (skipEffectFetchRef.current) {
+      skipEffectFetchRef.current = false;
+      return;
+    }
     // Fetching is the intended external synchronization for committed browse state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadNotes(committed, difficulty, sort, order, page);
@@ -286,8 +326,13 @@ function NotesPageContent() {
       practicedFrom: draftRange ? calendarToYmd(draftRange.start) : null,
       practicedTo: draftRange ? calendarToYmd(draftRange.end) : null,
     };
-    setPage(1);
+    const nextPage = 1;
+    // Avoid the committed/page effect starting a second fetch that aborts this one.
+    skipEffectFetchRef.current = true;
+    setPage(nextPage);
     setCommitted(next);
+    void loadNotes(next, difficulty, sort, order, nextPage, { announce: true });
+    replaceBrowseUrl(next, difficulty, sort, order, nextPage);
   }
 
   function onSortChange(value: string) {
@@ -449,7 +494,7 @@ function NotesPageContent() {
                 </Select.Popover>
               </Select>
               <div className="flex items-end">
-                <Button type="submit" isPending={loading}>
+                <Button type="submit" isDisabled={loading}>
                   {t("filters.search")}
                 </Button>
               </div>

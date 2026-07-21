@@ -163,6 +163,17 @@ html[data-theme="dark"] body {
 .ask-shell .ask-rail {
   border-right: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   background: var(--canvas);
+  transition: width 180ms ease;
+}
+
+.ask-shell .ask-rail--collapsed {
+  width: 3.5rem; /* 56px — matches Tailwind w-14 */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-shell .ask-rail {
+    transition: none;
+  }
 }
 
 /* Ask answer markdown — readable code on forced-dark canvas

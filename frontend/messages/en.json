@@ -116,6 +116,10 @@
         "search": "Search",
         "pageSummary": "{from}–{to} of {total}"
       },
+      "toast": {
+        "found": "Found {count} notes",
+        "none": "No matching notes found"
+      },
       "empty": "No notes match these filters. Create one to start your archive.",
       "errors": {
         "couldNotLoad": "Could not load notes"
@@ -245,6 +249,8 @@
     "retrievedNotesCount": "({count})",
     "retrievedNotesHint": "Sources used for this answer — expand to review",
     "noRelevantNotes": "No relevant notes were found.",
+    "contextChip": "Context notes",
+    "contextChipWithCount": "Context notes ({count})",
     "contextBar": {
       "heading": "Context notes",
       "count": "({count})",
@@ -257,6 +263,8 @@
       "railSessions": "Sessions",
       "railNotes": "Notes",
       "newChat": "New chat",
+      "collapseRail": "Collapse sidebar",
+      "expandRail": "Expand sidebar",
       "empty": "No conversations yet.",
       "loading": "Loading sessions…",
       "deleteHeading": "Delete conversation?",
