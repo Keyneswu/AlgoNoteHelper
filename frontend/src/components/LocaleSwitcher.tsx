@@ -2,7 +2,8 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { ToggleButton, ToggleButtonGroup } from "@heroui/react";
+import { Button, Dropdown, Label } from "@heroui/react";
+import { Languages } from "lucide-react";
 import { LOCALE_COOKIE, type AppLocale, isAppLocale } from "@/i18n/config";
 
 function setLocaleCookie(locale: AppLocale) {
@@ -23,21 +24,36 @@ export function LocaleSwitcher() {
   }
 
   return (
-    <ToggleButtonGroup
-      size="sm"
-      selectionMode="single"
-      disallowEmptySelection
-      selectedKeys={new Set([current])}
-      onSelectionChange={(keys) => {
-        const selected = [...keys][0];
-        if (typeof selected === "string" && isAppLocale(selected)) {
-          switchTo(selected);
-        }
-      }}
-      aria-label={t("language")}
-    >
-      <ToggleButton id="en">{t("localeEn")}</ToggleButton>
-      <ToggleButton id="zh-CN">{t("localeZh")}</ToggleButton>
-    </ToggleButtonGroup>
+    <Dropdown>
+      <Button
+        size="sm"
+        variant="tertiary"
+        isIconOnly
+        aria-label={t("language")}
+      >
+        <Languages className="size-4" aria-hidden />
+      </Button>
+      <Dropdown.Popover placement="bottom" className="min-w-32">
+        <Dropdown.Menu
+          aria-label={t("language")}
+          selectionMode="single"
+          selectedKeys={new Set([current])}
+          onAction={(key) => {
+            if (typeof key === "string" && isAppLocale(key)) {
+              switchTo(key);
+            }
+          }}
+        >
+          <Dropdown.Item id="en" textValue={t("localeEn")}>
+            <Label>{t("localeEn")}</Label>
+            <Dropdown.ItemIndicator />
+          </Dropdown.Item>
+          <Dropdown.Item id="zh-CN" textValue={t("localeZh")}>
+            <Label>{t("localeZh")}</Label>
+            <Dropdown.ItemIndicator />
+          </Dropdown.Item>
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown>
   );
 }

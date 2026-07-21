@@ -153,7 +153,9 @@ export function AskRuntimeProvider({
         onTranscriptRef.current([
           ...history,
           { role: "user", content: question },
-          { role: "assistant", content: text },
+          ...(text.trim()
+            ? [{ role: "assistant" as const, content: text }]
+            : []),
         ]);
       },
     }),
