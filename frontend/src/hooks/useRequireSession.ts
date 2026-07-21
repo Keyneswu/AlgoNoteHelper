@@ -20,13 +20,17 @@ export function useRequireSession() {
 
   useEffect(() => {
     let cancelled = false;
-    setGatePending(true);
-    void authClient.getSession().then(({ data }) => {
+    // Re-gate on pathname change; defer setState so it is not sync in the effect body.
+    void Promise.resolve().then(() => {
       if (cancelled) return;
-      setGatePending(false);
-      if (!data && pathname !== "/login") {
-        router.replace("/login");
-      }
+      setGatePending(true);
+      return authClient.getSession().then(({ data }) => {
+        if (cancelled) return;
+        setGatePending(false);
+        if (!data && pathname !== "/login") {
+          router.replace("/login");
+        }
+      });
     });
     return () => {
       cancelled = true;

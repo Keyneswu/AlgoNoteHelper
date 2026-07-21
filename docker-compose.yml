@@ -18,6 +18,8 @@ services:
       retries: 10
 
   api:
+    # Production: set IMAGE_TAG=<git-sha> and pull from GHCR. Local: omit IMAGE_TAG and use --build.
+    image: ghcr.io/keyneswu/algonote-api:${IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.api
@@ -36,6 +38,7 @@ services:
         condition: service_healthy
 
   frontend:
+    image: ghcr.io/keyneswu/algonote-frontend:${IMAGE_TAG:-local}
     build:
       context: ./frontend
       dockerfile: Dockerfile
