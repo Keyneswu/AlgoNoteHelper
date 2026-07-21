@@ -309,7 +309,6 @@ function NotesPageContent() {
       return;
     }
     // Fetching is the intended external synchronization for committed browse state.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadNotes(committed, difficulty, sort, order, page);
     if (skipUrlWriteRef.current) {
       skipUrlWriteRef.current = false;

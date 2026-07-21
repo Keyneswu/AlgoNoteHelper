@@ -92,6 +92,8 @@ export default function AskPage() {
   const bootstrappedRef = useRef(false);
 
   useEffect(() => {
+    // Hydrate rail preference from localStorage after mount (SSR-safe).
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- external store hydrate
     setRailCollapsed(readRailCollapsed());
     setRailReady(true);
   }, []);
