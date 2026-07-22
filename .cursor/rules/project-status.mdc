@@ -36,5 +36,6 @@ docker compose up --build -d
 ## Agent guidance
 
 - Assume prod is running and has real user/admin data — avoid destructive DB/volume advice.
+- For live UI / screenshots / smoke login, use the test account in `test-credentials.mdc` (`test@example.com` / `test123`).
 - New features: prefer OpenSpec propose/apply when the user wants structured changes.
 - Deploy help: default to the manual SSH flow above; mention Actions only if asked.

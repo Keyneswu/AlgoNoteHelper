@@ -1,133 +1,188 @@
 # AlgoNoteHelper
 
-Private algorithm practice note catalog with structured filters (Path 1) and retrieve → list → answer semantic search (Path 2).
+Private algorithm practice note catalog — **filter** what you know, **ask** what you forget.
 
-## Stack
+[![Live](https://img.shields.io/badge/live-algonote.keyneswu.com-22c55e?style=flat-square)](https://algonote.keyneswu.com)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Postgres](https://img.shields.io/badge/Postgres-17%20%2B%20pgvector-4169E1?style=flat-square&logo=postgresql)](https://github.com/pgvector/pgvector)
+[![HeroUI](https://img.shields.io/badge/HeroUI-v3-ff6b9d?style=flat-square)](https://heroui.com/)
 
-- **Frontend:** Next.js (App Router) + HeroUI v3 + Better Auth
-- **API:** FastAPI + SQLAlchemy + Alembic
-- **DB:** Postgres 17 + pgvector (`pgvector/pgvector:pg17-trixie`)
+Import or write structured practice notes once, then reopen them in two paths:
 
-## Quick start (Docker Compose)
+| Path | What it does |
+|---|---|
+| **1 · Filter** | Browse the catalog with tags, difficulty, title, and practice dates |
+| **2 · Ask** | Retrieve with embeddings → build a grounding pool → answer from *your* notes only |
+
+<p align="center">
+  <img src="docs/screenshots/01-notes.png" alt="AlgoNoteHelper notes catalog" width="900" />
+</p>
+
+---
+
+## Tech stack
+
+| Layer | Stack |
+|---|---|
+| **Frontend** | Next.js 16 (App Router) · React 19 · HeroUI v3 · Tailwind CSS 4 · next-intl · assistant-ui · CodeMirror |
+| **Auth** | Better Auth (email/password + admin) · Next.js BFF → FastAPI identity bridge |
+| **API** | FastAPI · SQLAlchemy 2 · Alembic · Pydantic Settings |
+| **Data** | PostgreSQL 17 + pgvector |
+| **AI** | BYOK chat + embedding (e.g. DeepSeek / DashScope) — keys in Settings |
+| **Tooling** | Docker Compose · uv · pnpm |
+
+```text
+Browser ──► Next.js (Better Auth + /api/bff/*)
+                 │  X-User-Id + X-Internal-Secret
+                 ▼
+              FastAPI ──► Postgres 17 + pgvector
+```
+
+---
+
+## Core features
+
+### 1. Structured notes catalog (Path 1)
+
+Filter by title, preset tags (AND), difficulty, and practiced date range. Sort by learning order, difficulty, or last practiced. Filter state stays in the URL.
+
+![Notes catalog with filters](docs/screenshots/01-notes.png)
+
+### 2. Ask grounded in your notes (Path 2)
+
+Natural-language Q&A over your archive: embedding retrieval → Notebook context bar → streaming answer. Multi-turn sessions with a collapsible session rail.
+
+![Ask chat with grounded answer](docs/screenshots/02-ask.png)
+
+### 3. Markdown import & soft dedup
+
+Paste Markdown → AI extracts candidates → preview / edit / commit. Soft similarity surfaces likely duplicates; merge fields or keep as new.
+
+![Markdown import](docs/screenshots/03-import.png)
+
+### 4. Note detail
+
+Markdown statement & approach, CodeMirror for code, practice-history chips, optional AI rewrite helpers.
+
+![Note detail](docs/screenshots/04-note-detail.png)
+
+### 5. Auth, admin & BYOK
+
+No public signup. First admin via `/setup`; admins manage users in Settings. Each user configures and verifies their own chat + embedding API keys.
+
+---
+
+## Quick start
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-- App: http://localhost:3000
-- API health: http://localhost:8000/health
-
-**Local vs production images:** `api` / `frontend` declare both `build:` and `image:` (`ghcr.io/keyneswu/algonote-*`). Locally, omit `IMAGE_TAG` and use `docker compose up --build`. In production CI/CD sets `IMAGE_TAG=<git-sha>`, then `docker compose pull api frontend` and `docker compose up -d` (no `--build`). Database data lives in the named volume `pgdata` — routine deploys do not replace it. **Never** run `docker compose down -v` on production unless you intend to wipe the database.
+| Service | URL |
+|---|---|
+| App | http://localhost:3000 |
+| API health | http://localhost:8000/health |
 
 ### First run
 
-1. Open http://localhost:3000 — you will be redirected to `/setup` when no users exist.
-2. Create the first **admin** account (email + password).
-3. Sign in at `/login`.
-4. In **Settings**, configure and **verify** Chat + Embedding API keys (BYOK).
-5. Import Markdown notes, filter (Path 1), or Ask (Path 2).
+1. Open the app — you go to `/setup` when no users exist.  
+2. Create the first **admin** (email + password).  
+3. Sign in at `/login`.  
+4. In **Settings**, configure and **verify** Chat + Embedding keys (BYOK).  
+5. Import Markdown, filter notes, or Ask.
 
-### Admin add-user
+Admins create accounts under **Settings → Users** (public registration stays off).
 
-Admins can open **Settings → Users** to create accounts (public registration is disabled).
+> **Production tip:** Named volume `pgdata` persists across `up --build`. Never run `docker compose down -v` on production unless you intend to wipe the database.
+
+---
 
 ## Local development
 
-### Database
+<details>
+<summary><strong>Database</strong></summary>
 
 ```bash
 docker compose up db -d
 ```
 
-Uses image `pgvector/pgvector:pg17-trixie` and enables the `vector` extension on init.
+Uses `pgvector/pgvector:pg17-trixie` and enables the `vector` extension on init.
 
-### API
+</details>
+
+<details>
+<summary><strong>API</strong></summary>
 
 ```bash
 uv sync
 uv run uvicorn app.main:app --reload --port 8000
-```
-
-Business tables are created on API startup (`create_all`). Prefer Alembic for explicit migrations:
-
-```bash
+# optional
 uv run alembic upgrade head
 ```
 
-### Frontend
+</details>
+
+<details>
+<summary><strong>Frontend</strong></summary>
 
 ```bash
-# Root `.env` is shared (frontend/.env → ../.env symlink created in repo setup)
 cd frontend
 pnpm install
 pnpm dlx auth@latest migrate    # Better Auth tables
 pnpm dev
 ```
 
-## Identity bridge
+Root `.env` is shared (`frontend/.env` → `../.env` symlink).
 
-Browser sessions are owned by Better Auth on Next.js. Route Handlers under `/api/bff/*` validate the session and call FastAPI with:
+</details>
 
-- `X-User-Id`
-- `X-Internal-Secret`
+---
 
-FastAPI scopes all note operations by the bridged `user_id`. Admin role does **not** bypass note ownership.
+## Architecture notes
 
-## Environment
+**Identity bridge.** Sessions live in Better Auth on Next.js. `/api/bff/*` validates the session and calls FastAPI with `X-User-Id` + `X-Internal-Secret`. Notes are always scoped by that user id — admin does **not** bypass ownership.
 
-Copy `.env.example` → `.env` and fill secrets/API keys. Do **not** commit `.env`.
+**Environment.** Copy `.env.example` → `.env` (never commit `.env`):
 
-- `DATABASE_URL` — sync Postgres URL for Better Auth
-- `DATABASE_URL_ASYNC` — async URL for FastAPI
-- `DEEPSEEK_*` / `DASHSCOPE_*` — optional provider defaults (`deepseek-v4-pro`, `text-embedding-v3`); runtime BYOK still lives in Settings
-- Change `INTERNAL_API_SECRET`, `BETTER_AUTH_SECRET`, and `SECRETS_ENCRYPTION_KEY` before any shared deployment
-- `IMAGE_TAG` — optional; production deploy sets this to the git SHA of images pulled from GHCR
+| Variable | Role |
+|---|---|
+| `DATABASE_URL` | Sync Postgres (Better Auth) |
+| `DATABASE_URL_ASYNC` | Async Postgres (FastAPI) |
+| `INTERNAL_API_SECRET` / `BETTER_AUTH_SECRET` / `SECRETS_ENCRYPTION_KEY` | Change before shared deploy |
+| `DEEPSEEK_*` / `DASHSCOPE_*` | Optional defaults; runtime BYOK is in Settings |
+| `IMAGE_TAG` | Optional; production SHA for GHCR pulls |
 
-## CI / CD (GitHub Actions + GHCR)
+---
 
-### What runs where
+## Deploy
 
-1. **CI** (`.github/workflows/ci.yml`): on PRs and `main` — frontend lint/test, backend ruff/pytest. On `main` only — build and push `algonote-api` / `algonote-frontend` to GHCR tagged with the commit SHA (and `main`).
-2. **CD** (`.github/workflows/deploy.yml`): after a successful CI run on `main` (or manual `workflow_dispatch`) — SSH to the host, sync the git checkout (for Compose), set `IMAGE_TAG`, `docker login` + `compose pull` + `up -d` without `--build`. Does **not** run Alembic or Better Auth migrate.
-
-### GitHub configuration
-
-| Kind | Name | Purpose |
-|------|------|---------|
-| Variable | `NEXT_PUBLIC_APP_URL` | Baked into the frontend image at CI build time (e.g. `https://algonote.keyneswu.com`) |
-| Secret | `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `SSH_PORT`, `DEPLOY_PATH` | Existing SSH deploy |
-| Secret | `GHCR_USERNAME` | GitHub username for `docker login ghcr.io` on the server |
-| Secret | `GHCR_TOKEN` | PAT (or fine-grained token) with `read:packages` for the server to pull private images |
-
-### One-time server setup
-
-On the production host (after the first successful image push to GHCR):
+Prefer **manual SSH** until CI SSH auth is fully reliable:
 
 ```bash
-# Optional smoke test before relying on Actions CD:
-echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-cd ~/dev/projects/AlgoNoteHelper   # or your DEPLOY_PATH
-git fetch origin main && git reset --hard origin/main
-# IMAGE_TAG = full git SHA of the commit whose images you want
-export IMAGE_TAG=<sha>
-# Persist for Compose (keeps other .env secrets):
-grep -q '^IMAGE_TAG=' .env && sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
-docker compose pull api frontend
-docker compose up -d
-docker compose ps
+ssh ubuntu@<SERVER_IP>
+cd ~/dev/projects/AlgoNoteHelper
+git pull
+docker compose up --build -d
 ```
 
-Watch the first auto-deploy carefully (or run the smoke path above once) before treating CD as routine.
+Server `.env` must use the HTTPS domain for `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, and `CORS_ORIGINS`.
 
-### Schema changes (manual)
+**Schema changes are manual** — CD does not run Alembic / Better Auth migrate. Backup → deploy → `docker compose exec api alembic upgrade head` → verify login & notes.
 
-CD does **not** migrate the database. When a release includes Alembic or Better Auth schema changes:
+Optional workflows: `.github/workflows/` (CI, GHCR images, SSH deploy). Treat CD as optional.
 
-1. Backup: `pg_dump` (or equivalent) against production.
-2. Deploy the new app images as usual (or after a compatible migrate strategy).
-3. Migrate API schema: `docker compose exec api alembic upgrade head`
-4. If Auth tables changed: run Better Auth migrate from an environment that points at the same DB (see Local development → Frontend).
-5. Verify health / login / a note list.
+---
 
-Rollback of **images**: set `IMAGE_TAG` to a previous known-good SHA, `pull` + `up -d`. Rollback of a bad **migration** is a restore-from-backup problem, not an image pull.
+## Screenshots
+
+Place UI captures in [`docs/screenshots/`](docs/screenshots/):
+
+| File | Page |
+|---|---|
+| `00-login.png` | Login |
+| `01-notes.png` | Notes catalog (Path 1) |
+| `02-ask.png` | Ask + context bar (Path 2) |
+| `03-import.png` | Markdown import |
+| `04-note-detail.png` | Note detail |
