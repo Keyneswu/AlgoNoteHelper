@@ -74,6 +74,21 @@
   "home": {
     "preparingWorkspace": "Preparing your workspace…"
   },
+  "landing": {
+    "headline": "Filter what you know. Ask what you forget.",
+    "supporting": "Private algorithm practice notes — structured filters and grounded Ask.",
+    "path1": {
+      "title": "Structured catalog",
+      "blurb": "Filter by tags, difficulty, and practice dates."
+    },
+    "path2": {
+      "title": "Ask your notes",
+      "blurb": "Retrieve, ground a context pool, answer from your archive only."
+    },
+    "login": "Log in",
+    "visualPlaceholder": "Preview coming soon",
+    "inviteOnly": "Invite-only — ask an admin for an account."
+  },
   "login": {
     "signingIn": "Signing you in…",
     "heading": "Welcome back",

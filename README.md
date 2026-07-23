@@ -16,7 +16,7 @@ Import or write structured practice notes once, then reopen them in two paths:
 | **2 · Ask** | Retrieve with embeddings → build a grounding pool → answer from *your* notes only |
 
 <p align="center">
-  <img src="docs/screenshots/01-notes.png" alt="AlgoNoteHelper notes catalog" width="900" />
+  <img src="docs/screenshots/00-landing.png" alt="AlgoNoteHelper landing page" width="900" />
 </p>
 
 ---
@@ -181,6 +181,7 @@ Place UI captures in [`docs/screenshots/`](docs/screenshots/):
 
 | File | Page |
 |---|---|
+| `00-landing.png` | Marketing landing (`/`) |
 | `00-login.png` | Login |
 | `01-notes.png` | Notes catalog (Path 1) |
 | `02-ask.png` | Ask + context bar (Path 2) |

@@ -74,6 +74,21 @@
   "home": {
     "preparingWorkspace": "正在准备工作区…"
   },
+  "landing": {
+    "headline": "筛出你会的，问出你忘的。",
+    "supporting": "私有算法练习笔记库 — 结构化筛选，与基于笔记的 Ask。",
+    "path1": {
+      "title": "结构化目录",
+      "blurb": "按标签、难度与练习日期筛选笔记。"
+    },
+    "path2": {
+      "title": "向笔记提问",
+      "blurb": "检索、汇集上下文，仅基于你的笔记作答。"
+    },
+    "login": "登录",
+    "visualPlaceholder": "预览即将到来",
+    "inviteOnly": "仅限邀请 — 请联系管理员开通账号。"
+  },
   "login": {
     "signingIn": "正在登录…",
     "heading": "欢迎回来",
