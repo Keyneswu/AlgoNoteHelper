@@ -73,4 +73,11 @@ describe("LandingPage", () => {
       .toHaveAttribute("src", expect.stringContaining("settings.webp"));
     expect(screen.queryByText("Preview coming soon")).not.toBeInTheDocument();
   });
+
+  it("pairs the landing brand name with the selected brand mark", async () => {
+    const { container } = render(await LandingPage());
+
+    expect(screen.getByText("AlgoNoteHelper")).toBeInTheDocument();
+    expect(container.querySelector('img[src*="algonote-icon.svg"]')).toBeInTheDocument();
+  });
 });

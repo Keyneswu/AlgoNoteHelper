@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@heroui/styles";
 import { ArrowRight } from "lucide-react";
+import { BrandLockup } from "@/components/BrandLockup";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { auth } from "@/lib/auth";
 import { getNeedsSetup } from "@/lib/setup-status";
@@ -36,9 +37,13 @@ export default async function LandingPage() {
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-6 pb-20 pt-8 text-center sm:pt-14">
         <section className="flex max-w-2xl flex-col items-center gap-5">
-          <p className="text-5xl font-semibold tracking-tight text-accent sm:text-6xl">
-            {tCommon("brand")}
-          </p>
+          <BrandLockup
+            label={tCommon("brand")}
+            preload
+            className="flex-col gap-3"
+            markClassName="size-20 sm:size-24"
+            textClassName="text-5xl font-semibold tracking-tight text-accent sm:text-6xl"
+          />
           <h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
             {t("headline")}
           </h1>

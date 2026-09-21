@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Tooltip } from "@heroui/react";
 import { LogOut } from "lucide-react";
+import { BrandLockup } from "@/components/BrandLockup";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { authClient } from "@/lib/auth-client";
 
@@ -33,8 +34,11 @@ export function AppNav() {
   return (
     <header className="border-b border-border bg-canvas/90 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center gap-5 px-5 py-3">
-        <Link href="/notes" className="mr-3 text-lg font-bold tracking-tight text-accent">
-          {t("brand")}
+        <Link href="/notes" className="mr-3">
+          <BrandLockup
+            label={t("brand")}
+            textClassName="text-lg font-bold tracking-tight text-accent"
+          />
         </Link>
         <div className="flex flex-1 items-center gap-1 overflow-x-auto">
           {links.map((link) => (

@@ -1,4 +1,8 @@
-# AlgoNoteHelper
+<p align="center">
+  <img src="frontend/public/brand/algonote-icon.svg" alt="AlgoNoteHelper logo" width="96" height="96" />
+</p>
+
+<h1 align="center">AlgoNoteHelper</h1>
 
 Private algorithm practice note catalog — **filter** what you know, **ask** what you forget.
 

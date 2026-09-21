@@ -18,6 +18,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AlgoNoteHelper",
   description: "Your searchable algorithm practice notes",
+  icons: {
+    icon: [
+      { url: "/brand/algonote-icon.svg", type: "image/svg+xml" },
+      { url: "/brand/algonote-icon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/brand/algonote-icon-32.png",
+    apple: [
+      {
+        url: "/brand/algonote-apple-touch.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export default async function RootLayout({
