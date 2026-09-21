@@ -16,7 +16,7 @@ Import or write structured practice notes once, then reopen them in two paths:
 | **2 · Ask** | Retrieve with embeddings → build a grounding pool → answer from *your* notes only |
 
 <p align="center">
-  <img src="docs/screenshots/00-landing.png" alt="AlgoNoteHelper landing page" width="900" />
+  <img src="frontend/public/screenshots/notes.webp" alt="AlgoNoteHelper notes catalog with structured filters" width="1000" />
 </p>
 
 ---
@@ -47,13 +47,13 @@ Browser ──► Next.js (Better Auth + /api/bff/*)
 
 Filter by title, preset tags (AND), difficulty, and practiced date range. Sort by learning order, difficulty, or last practiced. Filter state stays in the URL.
 
-![Notes catalog with filters](docs/screenshots/01-notes.png)
+The product view above shows the catalog with its filters and difficulty cues.
 
 ### 2. Ask grounded in your notes (Path 2)
 
 Natural-language Q&A over your archive: embedding retrieval → Notebook context bar → streaming answer. Multi-turn sessions with a collapsible session rail.
 
-![Ask chat with grounded answer](docs/screenshots/02-ask.png)
+![Ask chat with grounded answer](frontend/public/screenshots/ask.webp)
 
 ### 3. Markdown import & soft dedup
 
@@ -70,6 +70,8 @@ Markdown statement & approach, CodeMirror for code, practice-history chips, opti
 ### 5. Auth, admin & BYOK
 
 No public signup. First admin via `/setup`; admins manage users in Settings. Each user configures and verifies their own chat + embedding API keys.
+
+![Private provider and account settings](frontend/public/screenshots/settings.webp)
 
 ---
 
@@ -177,13 +179,14 @@ Optional workflows: `.github/workflows/` (CI, GHCR images, SSH deploy). Treat CD
 
 ## Screenshots
 
-Place UI captures in [`docs/screenshots/`](docs/screenshots/):
+Current product captures live in [`frontend/public/screenshots/`](frontend/public/screenshots/) so the landing page and README share the same optimized assets. Supporting captures remain in [`docs/screenshots/`](docs/screenshots/).
 
 | File | Page |
 |---|---|
-| `00-landing.png` | Marketing landing (`/`) |
-| `00-login.png` | Login |
-| `01-notes.png` | Notes catalog (Path 1) |
-| `02-ask.png` | Ask + context bar (Path 2) |
-| `03-import.png` | Markdown import |
-| `04-note-detail.png` | Note detail |
+| `frontend/public/screenshots/notes.webp` | Notes catalog (Path 1) and landing showcase |
+| `frontend/public/screenshots/ask.webp` | Ask conversation (Path 2) and landing showcase |
+| `frontend/public/screenshots/settings.webp` | Settings and landing showcase |
+| `docs/screenshots/00-landing.png` | Marketing landing (`/`) |
+| `docs/screenshots/00-login.png` | Login |
+| `docs/screenshots/03-import.png` | Markdown import |
+| `docs/screenshots/04-note-detail.png` | Note detail |

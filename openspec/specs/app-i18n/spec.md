@@ -56,7 +56,7 @@ The system SHALL NOT translate user-authored note bodies, tags entered by the us
 - **THEN** the stored note content text is unchanged
 
 ### Requirement: Landing page strings localized
-User-facing static strings on the marketing landing (hero, dual-path intro, placeholder label, public chrome Log in, invite-only hint) SHALL come from locale message catalogs for both `en` and `zh-CN`.
+User-facing static strings on the marketing landing (hero, dual-path intro, product showcase labels and alternative text, public chrome Log in, invite-only hint) SHALL come from locale message catalogs for both `en` and `zh-CN`.
 
 #### Scenario: Chinese landing copy
 - **WHEN** the active locale is `zh-CN` and a visitor opens `/`

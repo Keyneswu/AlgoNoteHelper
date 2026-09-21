@@ -217,3 +217,67 @@ html[data-theme="dark"] body {
     var(--background);
 }
 
+/* Landing product reel: quiet document frames keep the captured UI as the focus. */
+.landing-shot {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 82%, var(--accent) 18%);
+  border-radius: 1rem;
+  background: color-mix(in oklab, var(--surface) 82%, transparent);
+  box-shadow: 0 24px 70px -44px color-mix(in oklab, var(--accent) 35%, transparent);
+  text-align: left;
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.landing-shot:hover {
+  border-color: color-mix(in oklab, var(--border) 58%, var(--accent) 42%);
+  transform: translateY(-2px);
+}
+
+.landing-shot--primary {
+  border-radius: 1.25rem;
+}
+
+.landing-shot__label {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.55rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+  padding: 0 0.8rem;
+  color: var(--muted);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.landing-shot__label::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 0.2rem color-mix(in oklab, var(--accent) 14%, transparent);
+  content: "";
+}
+
+.landing-shot__image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-shot {
+    transition: none;
+  }
+
+  .landing-shot:hover {
+    transform: none;
+  }
+}
+

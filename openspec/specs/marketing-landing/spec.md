@@ -26,12 +26,12 @@ When `/` is requested, the system SHALL redirect to `/setup` if first-run setup 
 - **WHEN** no users exist and a visitor opens `/`
 - **THEN** they are redirected to `/setup`
 
-### Requirement: Dual-path intro and visual placeholder
-Below the hero, the landing SHALL present a light introduction to Path 1 (structured filter) and Path 2 (Ask), and SHALL reserve a fixed-aspect visual placeholder slot for a future product image. This change MUST NOT embed real product screenshots in that slot.
+### Requirement: Dual-path intro and product showcase
+Below the hero, the landing SHALL present a light introduction to Path 1 (structured filter) and Path 2 (Ask), followed by a responsive product showcase using optimized screenshots of Notes, Ask, and Settings. Notes SHALL be the primary image, with Ask and Settings presented as supporting images. Screenshot labels and alternative text SHALL be localized.
 
-#### Scenario: Paths described without screenshots
+#### Scenario: Paths illustrated with product screenshots
 - **WHEN** a visitor views the landing below the hero
-- **THEN** Path 1 and Path 2 are described in UI copy and a visual placeholder region is present without a committed product screenshot asset
+- **THEN** Path 1 and Path 2 are described in UI copy and the Notes, Ask, and Settings screenshots are visible in that order without requiring interaction
 
 ### Requirement: Public landing chrome
 The landing SHALL provide minimal public chrome that includes a locale switcher for `en` and `zh-CN` and access to Log in, without the authenticated AppNav links.

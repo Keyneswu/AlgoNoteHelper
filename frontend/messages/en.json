@@ -86,7 +86,21 @@
       "blurb": "Retrieve, ground a context pool, answer from your archive only."
     },
     "login": "Log in",
-    "visualPlaceholder": "Preview coming soon",
+    "showcase": {
+      "title": "Inside AlgoNoteHelper",
+      "notes": {
+        "label": "Practice archive",
+        "alt": "Notes catalog with structured filters"
+      },
+      "ask": {
+        "label": "Grounded Ask",
+        "alt": "Grounded Ask conversation using saved notes"
+      },
+      "settings": {
+        "label": "Private settings",
+        "alt": "Private provider and account settings"
+      }
+    },
     "inviteOnly": "Invite-only — ask an admin for an account."
   },
   "login": {

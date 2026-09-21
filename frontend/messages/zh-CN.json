@@ -86,7 +86,21 @@
       "blurb": "检索、汇集上下文，仅基于你的笔记作答。"
     },
     "login": "登录",
-    "visualPlaceholder": "预览即将到来",
+    "showcase": {
+      "title": "走进 AlgoNoteHelper",
+      "notes": {
+        "label": "练习归档",
+        "alt": "带有结构化筛选条件的笔记目录"
+      },
+      "ask": {
+        "label": "基于笔记的问答",
+        "alt": "使用已保存笔记作为依据的问答对话"
+      },
+      "settings": {
+        "label": "私有设置",
+        "alt": "私有的模型服务与账户设置"
+      }
+    },
     "inviteOnly": "仅限邀请 — 请联系管理员开通账号。"
   },
   "login": {
